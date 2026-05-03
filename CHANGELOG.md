@@ -6,6 +6,11 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-05-03
+
+### Fixed
+- Release workflow now only runs the executable smoke test for `windows/amd64`, avoiding ARM64 execution failures on the hosted runner
+
 ## [0.2.0] - 2026-05-03
 
 ### Added

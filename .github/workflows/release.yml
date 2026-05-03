@@ -62,6 +62,7 @@ jobs:
           }
 
       - name: Release smoke test
+        if: matrix.goarch == 'amd64'
         shell: pwsh
         run: |
           powershell -ExecutionPolicy Bypass -File .\scripts\validate-release.ps1 -ExePath .\dist\cliai.exe
