@@ -6,6 +6,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-03
+
 ### Added
 - Project context detection for Go, Node, Python, Docker and Git repositories
 - Feedback learning store and accepted-command ranking bonuses
