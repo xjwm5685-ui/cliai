@@ -73,7 +73,7 @@ PackageName: $PackageName
 PackageUrl: $PackageUrl
 License: $License
 LicenseUrl: $LicenseUrl
-ShortDescription: 面向 PowerShell 的混合命令预测 CLI
+ShortDescription: Hybrid command prediction CLI for PowerShell
 Moniker: cliai
 Tags:
   - cli
@@ -85,8 +85,8 @@ ManifestType: defaultLocale
 ManifestVersion: $manifestVersion
 "@
 
-Set-Content -Path (Join-Path $targetDir "$PackageIdentifier.yaml") -Value $versionFile -NoNewline
-Set-Content -Path (Join-Path $targetDir "$PackageIdentifier.installer.yaml") -Value $installerFile -NoNewline
-Set-Content -Path (Join-Path $targetDir "$PackageIdentifier.locale.zh-CN.yaml") -Value $localeFile -NoNewline
+Set-Content -Path (Join-Path $targetDir "$PackageIdentifier.yaml") -Value $versionFile -NoNewline -Encoding utf8
+Set-Content -Path (Join-Path $targetDir "$PackageIdentifier.installer.yaml") -Value $installerFile -NoNewline -Encoding utf8
+Set-Content -Path (Join-Path $targetDir "$PackageIdentifier.locale.zh-CN.yaml") -Value $localeFile -NoNewline -Encoding utf8
 
 Write-Host "winget manifests generated in $targetDir"
