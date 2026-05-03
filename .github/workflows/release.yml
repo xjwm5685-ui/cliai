@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    strategy:
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            artifact: cliai_Windows_x86_64.zip
+          - goos: windows
+            goarch: arm64
+            artifact: cliai_Windows_ARM64.zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build binary
+        shell: pwsh
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          $buildDate = Get-Date -Format s
+          go build -trimpath -ldflags "-s -w -X github.com/sanqiu/cliai/internal/app.Version=${{ github.ref_name }} -X github.com/sanqiu/cliai/internal/app.Commit=${{ github.sha }} -X github.com/sanqiu/cliai/internal/app.BuildDate=$buildDate" -o dist/cliai.exe .
+
+      - name: Optional code signing
+        shell: pwsh
+        env:
+          CLIAI_SIGN_PFX_BASE64: ${{ secrets.CLIAI_SIGN_PFX_BASE64 }}
+          CLIAI_SIGN_PFX_PASSWORD: ${{ secrets.CLIAI_SIGN_PFX_PASSWORD }}
+          CLIAI_SIGN_TIMESTAMP_URL: ${{ secrets.CLIAI_SIGN_TIMESTAMP_URL }}
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\scripts\sign-windows.ps1 -FilePath .\dist\cliai.exe
+
+      - name: Archive and checksum
+        shell: pwsh
+        run: |
+          Compress-Archive -Path .\dist\cliai.exe -DestinationPath .\dist\${{ matrix.artifact }} -Force
+          Get-FileHash .\dist\${{ matrix.artifact }} -Algorithm SHA256 | ForEach-Object {
+            "$($_.Hash)  ${{ matrix.artifact }}" | Set-Content .\dist\${{ matrix.artifact }}.sha256
+          }
+
+      - name: Release smoke test
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\scripts\validate-release.ps1 -ExePath .\dist\cliai.exe
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/${{ matrix.artifact }}
+            dist/${{ matrix.artifact }}.sha256
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

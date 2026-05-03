@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run gofmt check
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Recurse -Filter *.go | Select-Object -ExpandProperty FullName
+          $diff = gofmt -l $files
+          if ($diff) {
+            Write-Error "The following files are not formatted:`n$diff"
+          }
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Run benchmark smoke
+        run: go test ./internal/predict -run ^$ -bench BenchmarkPredict -benchtime=1x
+
+      - name: Build binary
+        shell: pwsh
+        run: |
+          go build -trimpath -ldflags "-X github.com/sanqiu/cliai/internal/app.Version=ci -X github.com/sanqiu/cliai/internal/app.Commit=${env:GITHUB_SHA} -X github.com/sanqiu/cliai/internal/app.BuildDate=$(Get-Date -Format s)" -o dist/cliai.exe .
+
+      - name: Run selftest
+        shell: pwsh
+        run: |
+          ./dist/cliai.exe selftest --json
