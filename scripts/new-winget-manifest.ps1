@@ -26,7 +26,12 @@ New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
 
 $manifestVersion = "1.10.0"
 
+$versionHeader = "# yaml-language-server: `$schema=https://aka.ms/winget-manifest.version.$manifestVersion.schema.json"
+$installerHeader = "# yaml-language-server: `$schema=https://aka.ms/winget-manifest.installer.$manifestVersion.schema.json"
+$defaultLocaleHeader = "# yaml-language-server: `$schema=https://aka.ms/winget-manifest.defaultLocale.$manifestVersion.schema.json"
+
 $versionFile = @"
+$versionHeader
 PackageIdentifier: $PackageIdentifier
 PackageVersion: $Version
 DefaultLocale: zh-CN
@@ -61,9 +66,10 @@ $installerLines += @(
   "ManifestVersion: $manifestVersion"
 )
 
-$installerFile = $installerLines -join "`r`n"
+$installerFile = $installerHeader + "`r`n" + ($installerLines -join "`r`n")
 
 $localeFile = @"
+$defaultLocaleHeader
 PackageIdentifier: $PackageIdentifier
 PackageVersion: $Version
 PackageLocale: zh-CN
