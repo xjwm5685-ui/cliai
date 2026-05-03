@@ -21,6 +21,7 @@ The goal is not just prefix completion, but better command suggestions for real 
 - Interactive selection mode
 - Clipboard copy support
 - CI, Release, signing, and winget helper scripts included
+- Chocolatey package generation script included
 
 ## Quick Start
 
@@ -55,3 +56,18 @@ cliai version
 
 - GitHub: [xjwm5685-ui/cliai](https://github.com/xjwm5685-ui/cliai)
 - Expected winget package: `Sanqiu.Cliai`
+- Expected Chocolatey package: `sanqiu-cliai`
+
+## Installation Channels
+
+- `winget install Sanqiu.Cliai`
+- `choco install sanqiu-cliai`
+
+Chocolatey packaging files can be generated with:
+
+```powershell
+.\scripts\new-chocolatey-package.ps1 `
+  -Version 0.2.1 `
+  -X64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_Windows_x86_64.zip `
+  -X64Sha256 YOUR_X64_SHA256
+```

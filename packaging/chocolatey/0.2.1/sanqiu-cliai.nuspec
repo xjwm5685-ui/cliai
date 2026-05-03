@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>sanqiu-cliai</id>
+    <version>0.2.1</version>
+    <packageSourceUrl>https://github.com/xjwm5685-ui/cliai</packageSourceUrl>
+    <title>cliai</title>
+    <authors>Sanqiu</authors>
+    <owners>Sanqiu</owners>
+    <projectUrl>https://github.com/xjwm5685-ui/cliai</projectUrl>
+    <docsUrl>https://github.com/xjwm5685-ui/cliai/blob/main/README.md</docsUrl>
+    <licenseUrl>https://github.com/xjwm5685-ui/cliai/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/xjwm5685-ui/cliai</projectSourceUrl>
+    <bugTrackerUrl>https://github.com/xjwm5685-ui/cliai/issues</bugTrackerUrl>
+    <releaseNotes>https://github.com/xjwm5685-ui/cliai/releases/tag/v0.2.1</releaseNotes>
+    <summary>Hybrid command prediction CLI for PowerShell</summary>
+    <description>cliai is a PowerShell-first command prediction CLI that combines local history, project context, user feedback and optional cloud reranking.</description>
+    <tags>cliai powershell cli ai productivity command</tags>
+  </metadata>
+</package>

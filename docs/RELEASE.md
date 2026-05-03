@@ -1,6 +1,6 @@
 # Release Guide
 
-本文件用于真实发布 `cliai` 到 GitHub Release 与 winget。
+本文件用于真实发布 `cliai` 到 GitHub Release、winget 与 Chocolatey。
 
 ## 1. 需要的 GitHub Secrets
 
@@ -45,20 +45,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check-release-env.ps1 -Requir
 无签名本地发布：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.0
+powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.1
 ```
 
 需要签名时：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.0 -RequireSignature
+powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.1 -RequireSignature
 ```
 
 ## 5. 推送正式 tag
 
 ```powershell
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.2.1
+git push origin v0.2.1
 ```
 
 Release workflow 会：
@@ -76,17 +76,17 @@ Release workflow 会：
 
 ```powershell
 .\scripts\new-winget-manifest.ps1 `
-  -Version 0.2.0 `
-  -X64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.0/cliai_Windows_x86_64.zip `
+  -Version 0.2.1 `
+  -X64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_Windows_x86_64.zip `
   -X64Sha256 YOUR_X64_SHA256 `
-  -Arm64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.0/cliai_Windows_ARM64.zip `
+  -Arm64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_Windows_ARM64.zip `
   -Arm64Sha256 YOUR_ARM64_SHA256
 ```
 
 ## 7. 校验 winget manifest
 
 ```powershell
-.\scripts\check-winget-manifest.ps1 -Directory .\packaging\winget\0.2.0
+.\scripts\check-winget-manifest.ps1 -Directory .\packaging\winget\0.2.1
 ```
 
 ## 8. 提交到 winget-pkgs
@@ -96,3 +96,25 @@ Release workflow 会：
 - `Sanqiu.Cliai.yaml`
 - `Sanqiu.Cliai.installer.yaml`
 - `Sanqiu.Cliai.locale.zh-CN.yaml`
+
+## 9. 生成 Chocolatey 包目录
+
+```powershell
+.\scripts\new-chocolatey-package.ps1 `
+  -Version 0.2.1 `
+  -X64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_Windows_x86_64.zip `
+  -X64Sha256 YOUR_X64_SHA256
+```
+
+## 10. 打包 Chocolatey 包
+
+```powershell
+cd .\packaging\chocolatey\0.2.1
+choco pack
+```
+
+## 11. 推送到 Chocolatey 社区源
+
+```powershell
+choco push .\sanqiu-cliai.0.2.1.nupkg --source https://push.chocolatey.org/ --api-key YOUR_API_KEY
+```

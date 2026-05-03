@@ -6,6 +6,9 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+### Added
+- Chocolatey package generation script and package layout for publishing `cliai` as `sanqiu-cliai`
+
 ## [0.2.1] - 2026-05-03
 
 ### Fixed

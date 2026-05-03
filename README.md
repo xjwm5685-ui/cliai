@@ -8,6 +8,7 @@
 
 - 项目主页：[xjwm5685-ui/cliai](https://github.com/xjwm5685-ui/cliai)
 - 预期 winget 包名：`Sanqiu.Cliai`
+- 预期 Chocolatey 包名：`sanqiu-cliai`
 - 正式发布说明：[RELEASE.md](file:///d:/sanqiu/cli%20ai/docs/RELEASE.md)
 - 英文简介：[README_EN.md](file:///d:/sanqiu/cli%20ai/README_EN.md)
 
@@ -50,7 +51,7 @@ cliai predict --interactive "进入 src"
 - 交互模式：支持交互式选择、复制到剪贴板、只输出最佳命令
 - 云端重排：支持 OpenAI 兼容接口做候选排序增强
 - 安全收敛：云端只能重排现有本地候选，不能发明新命令
-- 发布就绪：内置 CI、Release、签名脚本、winget manifest 生成与校验脚本
+- 发布就绪：内置 CI、Release、签名脚本、winget/Chocolatey 包生成与校验辅助脚本
 
 ## 当前边界
 
@@ -88,6 +89,7 @@ cliai predict --interactive "进入 src"
 - [CI 与发布](#ci-与发布)
 - [代码签名](#代码签名)
 - [winget 发布](#winget-发布)
+- [Chocolatey 发布](#chocolatey-发布)
 - [常见问题](#常见问题)
 
 ## 快速开始
@@ -161,6 +163,19 @@ winget install Sanqiu.Cliai
 
 - 当前仓库已经准备好 Release 与 winget manifest 生成链路
 - 但是否能直接通过 `winget install` 使用，仍取决于 manifest 是否已提交并合并到 `microsoft/winget-pkgs`
+
+### 未来通过 Chocolatey 安装
+
+预期安装命令：
+
+```powershell
+choco install sanqiu-cliai
+```
+
+说明：
+
+- 当前仓库已经补齐 Chocolatey 包生成脚本与包目录结构
+- 正式可安装仍取决于包是否已推送并通过 Chocolatey 社区仓库审核
 
 ## 命令总览
 
@@ -711,10 +726,14 @@ cli ai/
 │  ├─ history/
 │  ├─ predict/
 │  └─ project/
+├─ packaging/
+│  ├─ chocolatey/
+│  └─ winget/
 ├─ scripts/
 │  ├─ install-powershell.ps1
 │  ├─ sign-windows.ps1
 │  ├─ validate-release.ps1
+│  ├─ new-chocolatey-package.ps1
 │  ├─ new-winget-manifest.ps1
 │  ├─ check-winget-manifest.ps1
 │  └─ release-local.ps1
@@ -887,6 +906,49 @@ powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.
 
 ```powershell
 winget install Sanqiu.Cliai
+```
+
+## Chocolatey 发布
+
+### 1. 先准备 GitHub Release 产物
+
+当前 Chocolatey 包默认使用 x64 便携 zip 资产：
+
+- `https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_Windows_x86_64.zip`
+
+### 2. 生成 Chocolatey 包目录
+
+```powershell
+.\scripts\new-chocolatey-package.ps1 `
+  -Version 0.2.1 `
+  -X64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_Windows_x86_64.zip `
+  -X64Sha256 YOUR_X64_SHA256
+```
+
+生成后目录类似：
+
+- `packaging/chocolatey/0.2.1/sanqiu-cliai.nuspec`
+- `packaging/chocolatey/0.2.1/tools/chocolateyinstall.ps1`
+- `packaging/chocolatey/0.2.1/tools/chocolateyuninstall.ps1`
+- `packaging/chocolatey/0.2.1/tools/VERIFICATION.txt`
+
+### 3. 本地打包
+
+```powershell
+cd .\packaging\chocolatey\0.2.1
+choco pack
+```
+
+### 4. 推送到 Chocolatey 社区源
+
+```powershell
+choco push .\sanqiu-cliai.0.2.1.nupkg --source https://push.chocolatey.org/ --api-key YOUR_API_KEY
+```
+
+最终用户安装方式：
+
+```powershell
+choco install sanqiu-cliai
 ```
 
 ## 常见问题

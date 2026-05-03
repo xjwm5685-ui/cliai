@@ -1,0 +1,14 @@
+﻿VERIFICATION
+Verification is intended to assist the Chocolatey moderators and community
+in verifying that this package matches the upstream project source and release.
+
+1. Download the upstream release asset:
+   https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_Windows_x86_64.zip
+
+2. Compute the SHA256 checksum of the downloaded file.
+
+3. Confirm the checksum matches:
+   5AD1D13C48AAEC89C359523182847AEEB14FA8F986F3F5B6AB29A4B0A871D3B2
+
+4. Confirm the package metadata points to:
+   https://github.com/xjwm5685-ui/cliai
