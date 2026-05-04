@@ -102,6 +102,9 @@ func TestPrintHelpUsesLocalFirstPositioning(t *testing.T) {
 	if !strings.Contains(output, "local-first command prediction and completion CLI") {
 		t.Fatalf("expected local-first help text, got %q", output)
 	}
+	if !strings.Contains(output, "history import           Import shell history into the local cache") {
+		t.Fatalf("expected cross-shell history help text, got %q", output)
+	}
 	if strings.Contains(output, "--no-cloud") {
 		t.Fatalf("did not expect removed --no-cloud flag in help output: %q", output)
 	}

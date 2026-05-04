@@ -519,7 +519,7 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "Commands:")
 	fmt.Fprintln(w, "  predict <query>          Predict commands from a fragment or natural language")
 	fmt.Fprintln(w, "  predictor serve          Start the local predictor bridge for PowerShell")
-	fmt.Fprintln(w, "  history import           Import PowerShell history into the local cache")
+	fmt.Fprintln(w, "  history import           Import shell history into the local cache")
 	fmt.Fprintln(w, "  config show              Show current config")
 	fmt.Fprintln(w, "  config set <key> <value> Update config values")
 	fmt.Fprintln(w, "  feedback show            Show accepted suggestions")

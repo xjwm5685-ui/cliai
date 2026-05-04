@@ -6,6 +6,16 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-05-04
+
+### Added
+- Parent-directory project marker detection so predictions still recognize repository context from nested subdirectories
+- Regression coverage for parent project detection and cross-shell history help text
+
+### Fixed
+- PowerShell predictor bridge now uses a more forgiving cold-start timeout and restarts after repeated read timeouts
+- CLI help now describes `history import` as shell history import instead of PowerShell-only import
+
 ## [0.2.8] - 2026-05-04
 
 ### Added

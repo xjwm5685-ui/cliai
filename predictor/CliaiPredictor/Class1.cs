@@ -127,6 +127,10 @@ public sealed class Init : IModuleAssemblyInitializer, IModuleAssemblyCleanup
 
 internal sealed class PredictorBridgeClient : IDisposable
 {
+    private static readonly TimeSpan ColdStartReadTimeout = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan WarmReadTimeout = TimeSpan.FromMilliseconds(40);
+    private static readonly TimeSpan ColdStartWindow = TimeSpan.FromSeconds(2);
+
     private readonly object _sync = new();
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -136,6 +140,8 @@ internal sealed class PredictorBridgeClient : IDisposable
     private Process? _process;
     private StreamWriter? _stdin;
     private StreamReader? _stdout;
+    private DateTime _startedAtUtc = DateTime.MinValue;
+    private int _consecutiveTimeouts;
 
     public void EnsureStarted()
     {
@@ -176,12 +182,18 @@ internal sealed class PredictorBridgeClient : IDisposable
             try
             {
                 var readTask = _stdout.ReadLineAsync();
-                var completed = readTask.Wait(TimeSpan.FromMilliseconds(15), cancellationToken);
+                var completed = readTask.Wait(CurrentReadTimeout(), cancellationToken);
                 if (!completed)
                 {
+                    _consecutiveTimeouts++;
+                    if (_consecutiveTimeouts >= 2)
+                    {
+                        RestartLocked();
+                    }
                     return Array.Empty<string>();
                 }
 
+                _consecutiveTimeouts = 0;
                 var line = readTask.Result;
                 if (string.IsNullOrWhiteSpace(line))
                 {
@@ -246,6 +258,8 @@ internal sealed class PredictorBridgeClient : IDisposable
         _process = process;
         _stdin = process.StandardInput;
         _stdout = process.StandardOutput;
+        _startedAtUtc = DateTime.UtcNow;
+        _consecutiveTimeouts = 0;
     }
 
     private void RestartLocked()
@@ -290,6 +304,18 @@ internal sealed class PredictorBridgeClient : IDisposable
         _process = null;
         _stdin = null;
         _stdout = null;
+        _startedAtUtc = DateTime.MinValue;
+        _consecutiveTimeouts = 0;
+    }
+
+    private TimeSpan CurrentReadTimeout()
+    {
+        if (_startedAtUtc != DateTime.MinValue && DateTime.UtcNow - _startedAtUtc <= ColdStartWindow)
+        {
+            return ColdStartReadTimeout;
+        }
+
+        return WarmReadTimeout;
     }
 
     private static string ResolveExecutable()

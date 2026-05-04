@@ -28,47 +28,11 @@ func Detect(cwd string) (Context, error) {
 	}
 
 	typeSet := map[string]struct{}{}
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() {
-			ctx.Directories = append(ctx.Directories, name)
-			if name == ".git" {
-				ctx.IsGitRepo = true
-			}
-			continue
-		}
-
-		ctx.Files = append(ctx.Files, name)
-		switch strings.ToLower(name) {
-		case "go.mod":
-			typeSet["go"] = struct{}{}
-		case "package.json":
-			typeSet["node"] = struct{}{}
-		case "pnpm-lock.yaml":
-			typeSet["node"] = struct{}{}
-			ctx.PackageManager = "pnpm"
-		case "package-lock.json":
-			typeSet["node"] = struct{}{}
-			if ctx.PackageManager == "" {
-				ctx.PackageManager = "npm"
-			}
-		case "yarn.lock":
-			typeSet["node"] = struct{}{}
-			if ctx.PackageManager == "" {
-				ctx.PackageManager = "yarn"
-			}
-		case "requirements.txt", "pyproject.toml":
-			typeSet["python"] = struct{}{}
-		case "dockerfile", "docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml":
-			typeSet["docker"] = struct{}{}
-		case ".git":
-			ctx.IsGitRepo = true
-		}
+	markCurrentDirContext(&ctx, typeSet, entries)
+	if err := markAncestorProjectContext(&ctx, typeSet, cwd); err != nil {
+		return ctx, err
 	}
 
-	if ctx.IsGitRepo {
-		typeSet["git"] = struct{}{}
-	}
 	for kind := range typeSet {
 		ctx.ProjectTypes = append(ctx.ProjectTypes, kind)
 	}
@@ -82,6 +46,71 @@ func Detect(cwd string) (Context, error) {
 	}
 
 	return ctx, nil
+}
+
+func markCurrentDirContext(ctx *Context, typeSet map[string]struct{}, entries []os.DirEntry) {
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() {
+			ctx.Directories = append(ctx.Directories, name)
+			if name == ".git" {
+				ctx.IsGitRepo = true
+				typeSet["git"] = struct{}{}
+			}
+			continue
+		}
+
+		ctx.Files = append(ctx.Files, name)
+		applyProjectMarker(ctx, typeSet, name)
+	}
+}
+
+func markAncestorProjectContext(ctx *Context, typeSet map[string]struct{}, cwd string) error {
+	current := filepath.Clean(cwd)
+	parent := filepath.Dir(current)
+	for parent != current {
+		entries, err := os.ReadDir(parent)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			applyProjectMarker(ctx, typeSet, entry.Name())
+		}
+		current = parent
+		parent = filepath.Dir(current)
+	}
+	return nil
+}
+
+func applyProjectMarker(ctx *Context, typeSet map[string]struct{}, name string) {
+	switch strings.ToLower(name) {
+	case "go.mod":
+		typeSet["go"] = struct{}{}
+	case "package.json":
+		typeSet["node"] = struct{}{}
+	case "pnpm-lock.yaml":
+		typeSet["node"] = struct{}{}
+		if ctx.PackageManager == "" {
+			ctx.PackageManager = "pnpm"
+		}
+	case "package-lock.json":
+		typeSet["node"] = struct{}{}
+		if ctx.PackageManager == "" {
+			ctx.PackageManager = "npm"
+		}
+	case "yarn.lock":
+		typeSet["node"] = struct{}{}
+		if ctx.PackageManager == "" {
+			ctx.PackageManager = "yarn"
+		}
+	case "requirements.txt", "pyproject.toml":
+		typeSet["python"] = struct{}{}
+	case "dockerfile", "docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml":
+		typeSet["docker"] = struct{}{}
+	case ".git":
+		ctx.IsGitRepo = true
+		typeSet["git"] = struct{}{}
+	}
 }
 
 func MatchDirectory(ctx Context, token string) string {
