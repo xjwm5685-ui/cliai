@@ -12,6 +12,7 @@ It is not a command runner. It is a command suggester that tries to understand y
 Project links:
 
 - GitHub repository: [xjwm5685-ui/cliai](https://github.com/xjwm5685-ui/cliai)
+- Community link: [Linux.do](https://linux.do)
 - Chinese README: [README.md](file:///d:/sanqiu/cliai/README.md)
 - Release guide: [RELEASE.md](file:///d:/sanqiu/cliai/docs/RELEASE.md)
 

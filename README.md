@@ -12,6 +12,7 @@
 当前仓库：
 
 - 项目主页：[xjwm5685-ui/cliai](https://github.com/xjwm5685-ui/cliai)
+- 社区友链：[Linux.do](https://linux.do)
 - 英文说明：[README_EN.md](file:///d:/sanqiu/cliai/README_EN.md)
 - 发布说明：[RELEASE.md](file:///d:/sanqiu/cliai/docs/RELEASE.md)
 - 发布清单：[RELEASE_CHECKLIST.md](file:///d:/sanqiu/cliai/docs/RELEASE_CHECKLIST.md)
