@@ -65,20 +65,20 @@ Linux/macOS 需要 apt 签名时：
 Windows 无签名本地发布：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.2
+powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.3
 ```
 
 Windows 需要签名时：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.2 -RequireSignature
+powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.3 -RequireSignature
 ```
 
 Linux/macOS 本地发布：
 
 ```bash
 ./scripts/check-release-env.sh
-./scripts/release-local.sh 0.2.2
+./scripts/release-local.sh 0.2.3
 ```
 
 说明：
@@ -90,8 +90,8 @@ Linux/macOS 本地发布：
 ## 5. 推送正式 tag
 
 ```powershell
-git tag v0.2.2
-git push origin v0.2.2
+git tag v0.2.3
+git push origin v0.2.3
 ```
 
 Release workflow 会：
@@ -137,17 +137,17 @@ cliai shell install powershell
 
 ```powershell
 .\scripts\new-winget-manifest.ps1 `
-  -Version 0.2.2 `
-  -X64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.2/cliai_Windows_x86_64.zip `
+  -Version 0.2.3 `
+  -X64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.3/cliai_Windows_x86_64.zip `
   -X64Sha256 YOUR_X64_SHA256 `
-  -Arm64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.2/cliai_Windows_ARM64.zip `
+  -Arm64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.3/cliai_Windows_ARM64.zip `
   -Arm64Sha256 YOUR_ARM64_SHA256
 ```
 
 ## 7. 校验 winget manifest
 
 ```powershell
-.\scripts\check-winget-manifest.ps1 -Directory .\packaging\winget\0.2.2
+.\scripts\check-winget-manifest.ps1 -Directory .\packaging\winget\0.2.3
 ```
 
 ## 8. 提交到 winget-pkgs
@@ -162,42 +162,42 @@ cliai shell install powershell
 
 ```powershell
 .\scripts\new-chocolatey-package.ps1 `
-  -Version 0.2.2 `
-  -X64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.2/cliai_Windows_x86_64.zip `
+  -Version 0.2.3 `
+  -X64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.3/cliai_Windows_x86_64.zip `
   -X64Sha256 YOUR_X64_SHA256
 ```
 
 ## 10. 打包 Chocolatey 包
 
 ```powershell
-cd .\packaging\chocolatey\0.2.2
+cd .\packaging\chocolatey\0.2.3
 choco pack
 ```
 
 ## 11. 推送到 Chocolatey 社区源
 
 ```powershell
-choco push .\sanqiu-cliai.0.2.2.nupkg --source https://push.chocolatey.org/ --api-key YOUR_API_KEY
+choco push .\sanqiu-cliai.0.2.3.nupkg --source https://push.chocolatey.org/ --api-key YOUR_API_KEY
 ```
 
 ## 12. 生成 Homebrew Formula
 
 ```bash
 ./scripts/new-homebrew-formula.sh \
-  --version 0.2.2 \
-  --darwin-amd64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.2/cliai_macOS_x86_64.tar.gz \
+  --version 0.2.3 \
+  --darwin-amd64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.3/cliai_macOS_x86_64.tar.gz \
   --darwin-amd64-sha256 YOUR_MACOS_X64_SHA256 \
-  --darwin-arm64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.2/cliai_macOS_ARM64.tar.gz \
+  --darwin-arm64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.3/cliai_macOS_ARM64.tar.gz \
   --darwin-arm64-sha256 YOUR_MACOS_ARM64_SHA256 \
-  --linux-amd64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.2/cliai_Linux_x86_64.tar.gz \
+  --linux-amd64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.3/cliai_Linux_x86_64.tar.gz \
   --linux-amd64-sha256 YOUR_LINUX_X64_SHA256 \
-  --linux-arm64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.2/cliai_Linux_ARM64.tar.gz \
+  --linux-arm64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.3/cliai_Linux_ARM64.tar.gz \
   --linux-arm64-sha256 YOUR_LINUX_ARM64_SHA256
 ```
 
 脚本默认会生成：
 
-- `packaging/homebrew/0.2.2/cliai.rb`
+- `packaging/homebrew/0.2.3/cliai.rb`
 
 后续步骤：
 
@@ -208,20 +208,20 @@ choco push .\sanqiu-cliai.0.2.2.nupkg --source https://push.chocolatey.org/ --ap
 ## 13. 生成 Debian 包
 
 ```bash
-./scripts/new-deb-package.sh --version 0.2.2 --arch amd64
-./scripts/new-deb-package.sh --version 0.2.2 --arch arm64
+./scripts/new-deb-package.sh --version 0.2.3 --arch amd64
+./scripts/new-deb-package.sh --version 0.2.3 --arch arm64
 ```
 
 如果当前环境没有 `dpkg-deb`，可以先生成 staging 目录：
 
 ```bash
-./scripts/new-deb-package.sh --version 0.2.2 --arch amd64 --stage-only
+./scripts/new-deb-package.sh --version 0.2.3 --arch amd64 --stage-only
 ```
 
 默认输出：
 
-- `packaging/deb/0.2.2/amd64/stage/cliai_0.2.2_amd64/`
-- `packaging/deb/0.2.2/amd64/cliai_0.2.2_amd64.deb`
+- `packaging/deb/0.2.3/amd64/stage/cliai_0.2.3_amd64/`
+- `packaging/deb/0.2.3/amd64/cliai_0.2.3_amd64.deb`
 
 说明：
 
@@ -233,9 +233,9 @@ choco push .\sanqiu-cliai.0.2.2.nupkg --source https://push.chocolatey.org/ --ap
 
 ```bash
 ./scripts/new-apt-repo.sh \
-  --repo-root ./packaging/apt/0.2.2 \
-  --deb ./packaging/deb/0.2.2/amd64/cliai_0.2.2_amd64.deb \
-  --deb ./packaging/deb/0.2.2/arm64/cliai_0.2.2_arm64.deb
+  --repo-root ./packaging/apt/0.2.3 \
+  --deb ./packaging/deb/0.2.3/amd64/cliai_0.2.3_amd64.deb \
+  --deb ./packaging/deb/0.2.3/arm64/cliai_0.2.3_arm64.deb
 ```
 
 脚本会生成：
@@ -254,7 +254,7 @@ choco push .\sanqiu-cliai.0.2.2.nupkg --source https://push.chocolatey.org/ --ap
 
 ```bash
 ./scripts/sign-apt-repo.sh \
-  --repo-root ./packaging/apt/0.2.2 \
+  --repo-root ./packaging/apt/0.2.3 \
   --require-signature
 ```
 

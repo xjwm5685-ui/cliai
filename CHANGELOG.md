@@ -9,6 +9,12 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 ### Added
 - Chocolatey package generation script and package layout for publishing `cliai` as `sanqiu-cliai`
 
+## [0.2.3] - 2026-05-04
+
+### Fixed
+- GitHub Actions `setup-go` cache now keys off `go.mod`, so CI and Release workflows work correctly in repositories that do not have a `go.sum` file
+- Release retry version advanced to `v0.2.3` after the failed `v0.2.2` workflow exposed the cache configuration issue
+
 ## [0.2.2] - 2026-05-04
 
 ### Added
