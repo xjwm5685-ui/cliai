@@ -6,11 +6,17 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-05-04
+
 ### Added
-- Chocolatey package generation script and package layout for publishing `cliai` as `sanqiu-cliai`
+- Regression tests to keep the local-first CLI help text and predictor bridge usage stable after removing remote reranking
+- Updated package metadata and README positioning for the local-first product direction
 
 ### Removed
-- OpenAI-compatible remote reranking and related configuration; `cliai` is now local-first
+- OpenAI-compatible remote reranking implementation and related configuration
+
+### Fixed
+- PowerShell predictor bridge no longer passes the removed `--no-cloud` flag to `cliai predictor serve`
 
 ## [0.2.6] - 2026-05-04
 
