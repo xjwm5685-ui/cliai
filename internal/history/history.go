@@ -18,12 +18,22 @@ type Entry struct {
 	Source   string    `json:"source"`
 }
 
-func ImportPowerShell(path string, limit int) ([]Entry, error) {
+func Import(path string, shell string, limit int) ([]Entry, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
+
+	return importFromScanner(bufio.NewScanner(file), normalizeShell(shell), limit)
+}
+
+func ImportPowerShell(path string, limit int) ([]Entry, error) {
+	return Import(path, "powershell", limit)
+}
+
+func importFromScanner(scanner *bufio.Scanner, shell string, limit int) ([]Entry, error) {
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
 	type aggregate struct {
 		count int
@@ -32,11 +42,9 @@ func ImportPowerShell(path string, limit int) ([]Entry, error) {
 
 	lineNo := 0
 	agg := map[string]aggregate{}
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
 		lineNo++
-		line, ok := sanitizeCommand(scanner.Text())
+		line, ok := normalizeHistoryLine(scanner.Text(), shell)
 		if !ok {
 			continue
 		}
@@ -57,7 +65,7 @@ func ImportPowerShell(path string, limit int) ([]Entry, error) {
 			Command:  command,
 			Count:    item.count,
 			LastUsed: now.Add(-time.Duration(recencyMinutes) * time.Minute),
-			Source:   "powershell-history",
+			Source:   shell + "-history",
 		})
 	}
 
@@ -72,6 +80,37 @@ func ImportPowerShell(path string, limit int) ([]Entry, error) {
 		entries = entries[:limit]
 	}
 	return entries, nil
+}
+
+func normalizeShell(shell string) string {
+	switch strings.ToLower(strings.TrimSpace(shell)) {
+	case "", "powershell", "pwsh":
+		return "powershell"
+	case "bash", "zsh", "fish":
+		return strings.ToLower(strings.TrimSpace(shell))
+	default:
+		return strings.ToLower(strings.TrimSpace(shell))
+	}
+}
+
+func normalizeHistoryLine(line string, shell string) (string, bool) {
+	switch shell {
+	case "zsh":
+		if strings.HasPrefix(line, ": ") {
+			if index := strings.Index(line, ";"); index >= 0 && index < len(line)-1 {
+				line = line[index+1:]
+			}
+		}
+	case "fish":
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "- cmd:") {
+			line = strings.TrimSpace(strings.TrimPrefix(line, "- cmd:"))
+		} else {
+			return "", false
+		}
+	}
+
+	return sanitizeCommand(line)
 }
 
 func LoadCache(path string) ([]Entry, error) {

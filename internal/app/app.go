@@ -32,6 +32,8 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) int {
 	switch args[0] {
 	case "predict":
 		return runPredict(args[1:], stdout, stderr)
+	case "predictor":
+		return runPredictor(args[1:], stdout, stderr)
 	case "history":
 		return runHistory(args[1:], stdout, stderr)
 	case "config":
@@ -108,7 +110,7 @@ func runPredict(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	var live []history.Entry
 	if cfg.HistoryPath != "" {
-		live, err = history.ImportPowerShell(cfg.HistoryPath, cfg.Local.MaxHistory)
+		live, err = history.Import(cfg.HistoryPath, cfg.Shell, cfg.Local.MaxHistory)
 		if err != nil && !os.IsNotExist(err) {
 			fmt.Fprintf(stderr, "read powershell history: %v\n", err)
 		}
@@ -246,7 +248,7 @@ func runHistory(args []string, stdout io.Writer, stderr io.Writer) int {
 			return 1
 		}
 
-		entries, err := history.ImportPowerShell(source, cfg.Local.MaxHistory)
+		entries, err := history.Import(source, cfg.Shell, cfg.Local.MaxHistory)
 		if err != nil {
 			fmt.Fprintf(stderr, "import history: %v\n", err)
 			return 1
@@ -385,8 +387,8 @@ func runFeedback(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runShell(args []string, stdout io.Writer, stderr io.Writer) int {
-	if len(args) < 2 || args[0] != "init" {
-		fmt.Fprintln(stderr, "usage: cliai shell init powershell")
+	if len(args) < 2 {
+		fmt.Fprintln(stderr, "usage: cliai shell [init|install] powershell")
 		return 1
 	}
 	if args[1] != "powershell" {
@@ -394,8 +396,16 @@ func runShell(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 
-	fmt.Fprintln(stdout, powershellSnippet())
-	return 0
+	switch args[0] {
+	case "init":
+		fmt.Fprintln(stdout, powershellSnippet())
+		return 0
+	case "install":
+		return runShellInstallPowerShell(stdout, stderr)
+	default:
+		fmt.Fprintln(stderr, "usage: cliai shell [init|install] powershell")
+		return 1
+	}
 }
 
 func runSelftest(args []string, stdout io.Writer, stderr io.Writer) int {
@@ -516,12 +526,14 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "Commands:")
 	fmt.Fprintln(w, "  predict <query>          Predict commands from a fragment or natural language")
+	fmt.Fprintln(w, "  predictor serve          Start the local predictor bridge for PowerShell")
 	fmt.Fprintln(w, "  history import           Import PowerShell history into the local cache")
 	fmt.Fprintln(w, "  config show              Show current config")
 	fmt.Fprintln(w, "  config set <key> <value> Update config values")
 	fmt.Fprintln(w, "  feedback show            Show accepted suggestions")
 	fmt.Fprintln(w, "  feedback accept          Record a selected suggestion")
 	fmt.Fprintln(w, "  shell init powershell    Print the PowerShell helper snippet")
+	fmt.Fprintln(w, "  shell install powershell Install the PowerShell predictor and profile integration")
 	fmt.Fprintln(w, "  selftest                 Run local smoke checks")
 	fmt.Fprintln(w, "  version                  Print version/build metadata")
 }

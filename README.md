@@ -1,6 +1,6 @@
 # cliai
 
-`cliai` 是一个面向 Windows PowerShell 的高准确度命令预测 CLI。
+`cliai` 是一个跨平台的高准确度命令预测 CLI，在 Windows、Linux、macOS 上都能运行，并对 PowerShell 实时灰字预测做了优先优化。
 
 它的目标不是只做传统的前缀补全，而是尽量结合自然语言、项目上下文、历史命令、个性化反馈和可选云端重排，给出更接近真实工作流的命令建议。
 
@@ -45,7 +45,7 @@ cliai predict --interactive "进入 src"
 - 混合预测：结合历史、内置命令知识库、意图模板和项目上下文
 - 自然语言支持：支持中英文常见意图表达
 - 项目上下文感知：识别 `Go`、`Node`、`Python`、`Docker`、`Git`
-- 历史增强：从 PowerShell 历史和本地缓存中提取高频、近期命令
+- 历史增强：从 PowerShell、bash、zsh、fish 历史和本地缓存中提取高频、近期命令
 - 个性化学习：记录用户接受的候选，对后续相似查询加权
 - 风险分级：对候选命令标记 `safe`、`caution`、`danger`
 - 交互模式：支持交互式选择、复制到剪贴板、只输出最佳命令
@@ -53,11 +53,24 @@ cliai predict --interactive "进入 src"
 - 安全收敛：云端只能重排现有本地候选，不能发明新命令
 - 发布就绪：内置 CI、Release、签名脚本、winget/Chocolatey 包生成与校验辅助脚本
 
+## 支持矩阵
+
+| 能力 | Windows | Linux | macOS |
+| --- | --- | --- | --- |
+| 核心 CLI 构建与运行 | 已支持 | 已支持 | 已支持 |
+| `history import` 默认路径 | PowerShell | bash/zsh/fish/pwsh | zsh/bash/pwsh |
+| `predict` / `selftest` / `config` | 已支持 | 已支持 | 已支持 |
+| GitHub Release 产物 | zip | tar.gz | tar.gz |
+| 一键系统安装脚本 | `install-powershell.ps1` | `install-unix.sh` | `install-unix.sh` |
+| PowerShell 实时灰字预测 | 已支持 | 已支持，需本机安装 `pwsh` | 已支持，需本机安装 `pwsh` |
+| 原生包管理分发 | winget / Chocolatey | 已补 `.deb` 与 apt repo 脚本 | 已补 Homebrew Formula 脚本 |
+
 ## 当前边界
 
 虽然这版已经比初版完整很多，但仍建议明确这些边界：
 
-- 当前正式支持的 shell 仍然只有 `powershell`
+- CLI 核心已支持 `powershell`、`bash`、`zsh`、`fish`
+- 实时灰字预测当前依赖 PowerShell `7.2+` 与 `PSReadLine`
 - 程序不会直接执行候选命令，只负责建议、选择、复制和学习
 - 项目上下文识别目前是轻量级静态检测，不是完整语义代理
 - 历史学习主要来自“命令出现次数”和“用户明确接受的候选”
@@ -77,6 +90,7 @@ cliai predict --interactive "进入 src"
 - [selftest 命令](#selftest-命令)
 - [输出格式](#输出格式)
 - [工作原理](#工作原理)
+- [支持矩阵](#支持矩阵)
 - [项目上下文感知](#项目上下文感知)
 - [反馈学习](#反馈学习)
 - [云端重排与安全边界](#云端重排与安全边界)
@@ -99,39 +113,45 @@ cliai predict --interactive "进入 src"
 ```powershell
 git clone https://github.com/xjwm5685-ui/cliai.git
 cd "cli ai"
-go build -o cliai.exe .
+go build -o .\bin\cliai.exe .
 ```
 
 ### 2. 查看版本
 
 ```powershell
-.\cliai.exe version
+.\bin\cliai.exe version
 ```
 
 ### 3. 导入 PowerShell 历史
 
 ```powershell
-.\cliai.exe history import
+.\bin\cliai.exe history import
 ```
 
 ### 4. 预测命令
 
 ```powershell
-.\cliai.exe predict "安装 vscode"
-.\cliai.exe predict "git st"
-.\cliai.exe predict --json "run tests"
+.\bin\cliai.exe predict "安装 vscode"
+.\bin\cliai.exe predict "git st"
+.\bin\cliai.exe predict --json "run tests"
 ```
 
 ### 5. 打开交互模式
 
 ```powershell
-.\cliai.exe predict --interactive "进入 src"
+.\bin\cliai.exe predict --interactive "进入 src"
 ```
 
-### 6. 初始化 PowerShell 助手
+### 6. 启用 PowerShell 实时预测
 
 ```powershell
-.\cliai.exe shell init powershell
+.\bin\cliai.exe shell install powershell
+```
+
+### 7. 初始化 PowerShell 助手
+
+```powershell
+.\bin\cliai.exe shell init powershell
 ```
 
 ## 安装
@@ -140,16 +160,52 @@ go build -o cliai.exe .
 
 要求：
 
-- Windows
-- Go 1.25 或兼容版本
+- Windows、Linux 或 macOS
+- Go `1.25` 或兼容版本
 
-构建：
+Windows PowerShell：
 
 ```powershell
-go build -o cliai.exe .
+go build -o .\bin\cliai.exe .
 ```
 
-如果你想全局使用，把生成的 `cliai.exe` 放到 `PATH` 中。
+Linux / macOS：
+
+```bash
+go build -o ./bin/cliai .
+```
+
+如果你想全局使用，把生成的二进制放到 `PATH` 中。
+
+### GitHub Release 安装
+
+Windows：
+
+1. 下载 `cliai_Windows_x86_64.zip` 或 `cliai_Windows_ARM64.zip`
+2. 解压后运行：
+
+```powershell
+.\cliai.exe shell install powershell
+```
+
+Linux / macOS：
+
+1. 下载对应的 `cliai_Linux_*.tar.gz` 或 `cliai_macOS_*.tar.gz`
+2. 解压后运行：
+
+```bash
+tar -xzf cliai_Linux_x86_64.tar.gz
+cd <extract-dir>
+./scripts/install-unix.sh
+```
+
+如果系统里已安装 `pwsh`，安装脚本会提示你继续执行：
+
+```bash
+cliai shell install powershell
+```
+
+来启用 PowerShell 实时灰字预测。
 
 ### 未来通过 winget 安装
 
@@ -177,16 +233,49 @@ choco install sanqiu-cliai
 - 当前仓库已经补齐 Chocolatey 包生成脚本与包目录结构
 - 正式可安装仍取决于包是否已推送并通过 Chocolatey 社区仓库审核
 
+### 未来通过 Homebrew 安装
+
+预期安装命令：
+
+```bash
+brew install <your-tap>/cliai
+```
+
+说明：
+
+- 当前仓库已补 `scripts/new-homebrew-formula.sh`
+- 它会根据 GitHub Release 的 macOS/Linux tar.gz 资产生成 Homebrew Formula
+- 仍需要单独维护并发布一个 Homebrew tap 仓库
+
+### 未来通过 apt 安装
+
+预期安装命令：
+
+```bash
+sudo apt install cliai
+```
+
+说明：
+
+- 当前仓库已补 `scripts/new-deb-package.sh`
+- 它可以生成 Debian 包 staging 目录，并在 Linux 上调用 `dpkg-deb` 构建 `.deb`
+- 当前仓库也已补 `scripts/new-apt-repo.sh`，可生成 `pool/`、`dists/`、`Packages.gz`、`Release`
+- 当前仓库已补 `scripts/sign-apt-repo.sh`，可生成 `Release.gpg` 和 `InRelease`
+- 当前 Release workflow 已自动构建 `.deb`、apt repo 元数据、可选签名、公钥和 apt 校验
+- 还缺真实公开的 apt 源托管地址，以及最终面向用户的软件源配置入口
+
 ## 命令总览
 
 ```text
 cliai predict <query>
+cliai predictor serve
 cliai history import
 cliai config show
 cliai config set <key> <value>
 cliai feedback show
 cliai feedback accept --query <query> <command>
 cliai shell init powershell
+cliai shell install powershell
 cliai selftest
 cliai version
 ```
@@ -324,9 +413,11 @@ cliai history import [--file path]
 
 ### 默认历史路径
 
-```text
-%USERPROFILE%\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt
-```
+- Windows PowerShell：`%USERPROFILE%\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt`
+- Linux/macOS PowerShell：`~/.local/share/powershell/PSReadLine/ConsoleHost_history.txt`
+- bash：`~/.bash_history`
+- zsh：`~/.zsh_history`
+- fish：`~/.local/share/fish/fish_history`
 
 ### 示例
 
@@ -359,8 +450,8 @@ cliai config set openai.timeout_seconds 20
 ### 配置项说明
 
 - `shell`
-  - 当前只支持 `powershell` 或 `pwsh`
-  - 内部统一归一化为 `powershell`
+  - 支持 `powershell`、`pwsh`、`bash`、`zsh`、`fish`
+  - `pwsh` 内部会统一归一化为 `powershell`
 - `history_path`
   - PowerShell 历史文件路径
 - `local.max_history`
@@ -382,6 +473,7 @@ cliai config set openai.timeout_seconds 20
 
 ```powershell
 cliai shell init powershell
+cliai shell install powershell
 ```
 
 ### 输出内容
@@ -412,7 +504,7 @@ csc "run tests"
 ### 自动写入 Profile
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install-powershell.ps1
+cliai shell install powershell
 ```
 
 ## selftest 命令
@@ -688,7 +780,30 @@ $env:CLIAI_OPENAI_MODEL="gpt-4.1-mini"
 
 ## PowerShell 集成
 
-### 方式一：手动输出
+### 实时灰字预测
+
+从这一版开始，`cliai` 不再只提供手动 `cliai predict ...`。
+
+现在可以通过 PowerShell Predictive IntelliSense 插件提供真正的实时灰字预测：
+
+- 你输入 `git st` 时，后面会直接出现灰色 `git status`
+- 你输入自然语言片段时，会由 `CliaiPredictor` 调用本地 `cliai predictor serve`
+- 预测结果来自本地历史、项目上下文、模板和反馈学习
+- 为了保证实时体验，插件默认关闭云端重排，只使用本地召回
+
+### 前置要求
+
+- PowerShell `7.2+`
+- PSReadLine `2.2.2+`
+- `.NET SDK 8`，仅在没有 bundled predictor 模块、需要本地编译 `CliaiPredictor` 时必需
+
+当前开发环境已验证：
+
+- PowerShell `7.6.1`
+- PSReadLine `2.4.5`
+- `.NET SDK 8.0.420`
+
+### 方式一：只加载 helper
 
 ```powershell
 cliai shell init powershell
@@ -696,11 +811,60 @@ cliai shell init powershell
 
 把输出复制到 PowerShell Profile 中。
 
-### 方式二：自动安装
+这会提供：
+
+- `csg`
+- `csi`
+- `csc`
+
+但这不是实时灰字预测。
+
+### 方式二：一键启用 helper + 实时灰字预测
+
+推荐直接执行：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install-powershell.ps1
+.\bin\cliai.exe shell install powershell
 ```
+
+如果你使用的是 Linux/macOS 且系统里安装了 `pwsh`，也可以在完成 `install-unix.sh` 后执行同一条命令。
+
+这个命令会自动寻找：
+
+- 安装目录里的 `scripts\install-powershell.ps1`
+- 安装目录里的 `modules\CliaiPredictor\<version>`
+- 当前 `cliai.exe`
+
+然后自动完成 profile 写入和 predictor 安装。
+
+### 方式三：手动执行安装脚本
+
+```powershell
+.\bin\cliai.exe version
+powershell -ExecutionPolicy Bypass -File .\scripts\install-powershell.ps1 -ExeName .\bin\cliai.exe
+```
+
+安装脚本会做这些事情：
+
+- 如有需要则编译 `predictor\CliaiPredictor\CliaiPredictor.csproj`
+- 把二进制模块复制到 `Documents\PowerShell\Modules\CliaiPredictor\0.2.1`
+- 往 PowerShell 7 的 `Documents\PowerShell\Profile.ps1` 写入 helper 片段
+- 设置 `$env:CLIAI_EXE`
+- 自动执行 `Import-Module CliaiPredictor`
+- 默认设置 `Set-PSReadLineOption -PredictionSource Plugin`
+- 自动绑定 `Alt+RightArrow` 和 `Alt+Shift+RightArrow`
+
+### 手动验证预测器是否注册
+
+```powershell
+Import-Module CliaiPredictor
+(Get-PSSubsystem -Kind CommandPredictor).Implementations |
+  Select-Object Id, Name, Description
+```
+
+如果安装成功，你应该能看到：
+
+- `Name = CliaiPredictor`
 
 ### 安装后可直接使用
 
@@ -709,6 +873,20 @@ csg "安装 vscode"
 csi "git st"
 csc "run tests"
 ```
+
+同时也可以直接在命令行输入时看到灰字预测。
+
+默认推荐按键：
+
+- `RightArrow`：接受当前 inline 预测
+- `Alt+RightArrow`：接受整条预测
+- `Alt+Shift+RightArrow`：接受下一个预测词
+
+### 关于 Shift 补全
+
+`PSReadLine` 不能绑定“单独按 Shift”。
+
+因此当前默认改用上面这组 `Alt` 组合键，而不是继续模拟“单独按 Shift 补全”。
 
 ## 项目结构
 
@@ -728,9 +906,19 @@ cli ai/
 │  └─ project/
 ├─ packaging/
 │  ├─ chocolatey/
+│  ├─ deb/
+│  ├─ apt/
+│  ├─ homebrew/
 │  └─ winget/
 ├─ scripts/
 │  ├─ install-powershell.ps1
+│  ├─ install-unix.sh
+│  ├─ check-release-env.sh
+│  ├─ new-apt-repo.sh
+│  ├─ new-deb-package.sh
+│  ├─ new-homebrew-formula.sh
+│  ├─ sign-apt-repo.sh
+│  ├─ release-local.sh
 │  ├─ sign-windows.ps1
 │  ├─ validate-release.ps1
 │  ├─ new-chocolatey-package.ps1
@@ -808,11 +996,11 @@ go test ./internal/predict -run ^$ -bench BenchmarkPredict
 
 CI 会执行：
 
-- `gofmt` 检查
-- `go test ./...`
-- 基准冒烟
-- 构建带版本元信息的二进制
-- `selftest --json`
+- 在 `Windows`、`Linux`、`macOS` 上执行 `gofmt` 检查
+- 在 `Windows`、`Linux`、`macOS` 上执行 `go test ./...`
+- 运行预测器基准冒烟
+- 构建带版本元信息的本机二进制
+- 运行 `selftest --json`
 
 ### Release
 
@@ -827,15 +1015,21 @@ CI 会执行：
 Release 会：
 
 1. 运行测试
-2. 为 `windows/amd64` 和 `windows/arm64` 构建二进制
-3. 注入 `Version`、`Commit`、`BuildDate`
-4. 如果提供证书则执行代码签名
-5. 打包为 zip
-6. 生成 SHA256
-7. 执行本地 release smoke test
-8. 上传 Release 资产
+2. 为 `windows/amd64`、`windows/arm64` 构建 zip 发布包
+3. 为 `linux/amd64`、`linux/arm64`、`darwin/amd64`、`darwin/arm64` 构建 tar.gz 发布包
+4. 为 Linux 额外构建 `amd64` / `arm64` 的 `.deb`
+5. 自动生成 apt 仓库元数据归档
+6. 注入 `Version`、`Commit`、`BuildDate`
+7. Windows 包额外暂存 `CliaiPredictor` 和 `install-powershell.ps1`
+8. Unix 包额外暂存 `scripts/install-unix.sh`
+9. 如果提供证书则对 Windows 可执行文件执行代码签名
+10. 如果提供 GPG 私钥则为 apt 仓库生成 `Release.gpg` 和 `InRelease`
+11. 生成 SHA256
+12. 自动校验 `.deb`、apt repo metadata、签名文件和公钥文件结构
+13. 对可在当前 runner 上执行的发布包运行 smoke test
+14. 上传 Release 资产
 
-正式发布前的 Secrets、证书和实际提交流程见 [RELEASE.md](file:///d:/sanqiu/cli%20ai/docs/RELEASE.md)。
+正式发布前的 Secrets、证书和实际提交流程见 [RELEASE.md](file:///d:/sanqiu/cli%20ai/docs/RELEASE.md)，发布核对项见 [RELEASE_CHECKLIST.md](file:///d:/sanqiu/cli%20ai/docs/RELEASE_CHECKLIST.md)。
 
 ## 代码签名
 
@@ -850,23 +1044,40 @@ Release 会：
 - `CLIAI_SIGN_PFX_BASE64`
 - `CLIAI_SIGN_PFX_PASSWORD`
 - `CLIAI_SIGN_TIMESTAMP_URL`
+- `CLIAI_APT_GPG_KEY_FILE`
+- `CLIAI_APT_GPG_KEY_ARMORED`
+- `CLIAI_APT_GPG_KEY_ID`
+- `CLIAI_APT_GPG_PASSPHRASE`
 
 ### 工作方式
 
 - 如果没有提供签名密钥，脚本会跳过签名
 - 如果提供了 PFX 和密码，脚本会导入证书并对 `cliai.exe` 执行 `Set-AuthenticodeSignature`
 
-### 本地签名发布
+### 本地 Windows 签名发布
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.0 -RequireSignature
 ```
 
-### 本地无签名发布
+### 本地 Windows 无签名发布
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.0
 ```
+
+### 本地 Linux/macOS 发布
+
+```bash
+./scripts/check-release-env.sh
+./scripts/release-local.sh 0.2.0
+```
+
+说明：
+
+- `release-local.ps1` 会生成 Windows zip、SHA256、predictor 模块和安装脚本
+- `release-local.sh` 会生成 Linux/macOS tar.gz、SHA256 和 `install-unix.sh`
+- 如果本机有 `dpkg-deb`，`release-local.sh` 还会额外生成 `.deb`、apt repo、签名文件、公钥和 apt 校验结果
 
 ## winget 发布
 
@@ -950,6 +1161,114 @@ choco push .\sanqiu-cliai.0.2.1.nupkg --source https://push.chocolatey.org/ --ap
 ```powershell
 choco install sanqiu-cliai
 ```
+
+## Homebrew 发布
+
+### 1. 先准备 GitHub Release 产物
+
+预期资产链接：
+
+- `https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_macOS_x86_64.tar.gz`
+- `https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_macOS_ARM64.tar.gz`
+- 可选：Linux 对应的 `cliai_Linux_x86_64.tar.gz` 和 `cliai_Linux_ARM64.tar.gz`
+
+### 2. 生成 Formula
+
+```bash
+./scripts/new-homebrew-formula.sh \
+  --version 0.2.1 \
+  --darwin-amd64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_macOS_x86_64.tar.gz \
+  --darwin-amd64-sha256 YOUR_MACOS_X64_SHA256 \
+  --darwin-arm64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_macOS_ARM64.tar.gz \
+  --darwin-arm64-sha256 YOUR_MACOS_ARM64_SHA256
+```
+
+### 3. 提交到 Tap 仓库
+
+- 将生成的 `packaging/homebrew/0.2.1/cliai.rb` 提交到你的 Homebrew tap
+- 常见仓库名是 `homebrew-tap`
+- 用户安装命令通常是 `brew install <owner>/tap/cliai`
+
+## Debian 发布
+
+### 1. 先准备 Linux Release 二进制
+
+例如：
+
+- `dist/linux-amd64/cliai`
+- `dist/linux-arm64/cliai`
+
+### 2. 生成 Debian 包目录或 `.deb`
+
+```bash
+./scripts/new-deb-package.sh --version 0.2.1 --arch amd64
+./scripts/new-deb-package.sh --version 0.2.1 --arch arm64
+```
+
+如果当前机器没有 `dpkg-deb`，也可以先只生成 staging 目录：
+
+```bash
+./scripts/new-deb-package.sh --version 0.2.1 --arch amd64 --stage-only
+```
+
+### 3. 输出位置
+
+- `packaging/deb/0.2.1/amd64/stage/cliai_0.2.1_amd64/`
+- `packaging/deb/0.2.1/amd64/cliai_0.2.1_amd64.deb`
+
+### 4. 生成 apt 仓库元数据
+
+```bash
+./scripts/new-apt-repo.sh \
+  --repo-root ./packaging/apt/0.2.1 \
+  --deb ./packaging/deb/0.2.1/amd64/cliai_0.2.1_amd64.deb \
+  --deb ./packaging/deb/0.2.1/arm64/cliai_0.2.1_arm64.deb
+```
+
+默认会生成：
+
+- `packaging/apt/0.2.1/pool/main/c/cliai/*.deb`
+- `packaging/apt/0.2.1/dists/stable/main/binary-amd64/Packages`
+- `packaging/apt/0.2.1/dists/stable/main/binary-amd64/Packages.gz`
+- `packaging/apt/0.2.1/dists/stable/Release`
+
+### 5. 后续 apt 源托管
+
+先生成签名文件：
+
+```bash
+./scripts/sign-apt-repo.sh \
+  --repo-root ./packaging/apt/0.2.1 \
+  --require-signature
+```
+
+脚本支持以下环境变量：
+
+- `CLIAI_APT_GPG_KEY_FILE`
+- `CLIAI_APT_GPG_KEY_ARMORED`
+- `CLIAI_APT_GPG_KEY_ID`
+- `CLIAI_APT_GPG_PASSPHRASE`
+
+签名后会得到：
+
+- `packaging/apt/0.2.1/dists/stable/Release.gpg`
+- `packaging/apt/0.2.1/dists/stable/InRelease`
+- 发布流程配置了 apt GPG key 后，还会额外上传 `cliai-archive-keyring.asc`
+
+如果你已经把 apt 仓库发布到某个静态地址，例如 `https://example.com/cliai/apt`，用户侧安装命令可以写成：
+
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://example.com/cliai/apt/cliai-archive-keyring.asc | sudo tee /etc/apt/keyrings/cliai-archive-keyring.asc >/dev/null
+echo "deb [signed-by=/etc/apt/keyrings/cliai-archive-keyring.asc] https://example.com/cliai/apt stable main" | sudo tee /etc/apt/sources.list.d/cliai.list >/dev/null
+sudo apt update
+sudo apt install cliai
+```
+
+若要支持真实的 `apt install cliai`，还需要继续补：
+
+- 可公开访问的 Debian/Ubuntu 软件源托管地址
+- 用户侧的软件源添加说明与安装命令
 
 ## 常见问题
 

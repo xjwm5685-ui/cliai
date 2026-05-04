@@ -12,13 +12,16 @@ jobs:
       contents: write
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - goos: windows
             goarch: amd64
+            asset_dir: windows-amd64
             artifact: cliai_Windows_x86_64.zip
           - goos: windows
             goarch: arm64
+            asset_dir: windows-arm64
             artifact: cliai_Windows_ARM64.zip
 
     steps:
@@ -40,9 +43,16 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          New-Item -ItemType Directory -Path dist -Force | Out-Null
-          $buildDate = Get-Date -Format s
-          go build -trimpath -ldflags "-s -w -X github.com/sanqiu/cliai/internal/app.Version=${{ github.ref_name }} -X github.com/sanqiu/cliai/internal/app.Commit=${{ github.sha }} -X github.com/sanqiu/cliai/internal/app.BuildDate=$buildDate" -o dist/cliai.exe .
+          $assetRoot = Join-Path "dist" "${{ matrix.asset_dir }}"
+          New-Item -ItemType Directory -Path $assetRoot -Force | Out-Null
+          $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          go build -trimpath -ldflags "-s -w -X github.com/sanqiu/cliai/internal/app.Version=${{ github.ref_name }} -X github.com/sanqiu/cliai/internal/app.Commit=${{ github.sha }} -X github.com/sanqiu/cliai/internal/app.BuildDate=$buildDate" -o (Join-Path $assetRoot "cliai.exe") .
+
+      - name: Stage PowerShell predictor assets
+        shell: pwsh
+        run: |
+          $moduleVersion = "${{ github.ref_name }}".TrimStart("v")
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\stage-predictor-module.ps1 -DestinationRoot .\dist\${{ matrix.asset_dir }} -ModuleVersion $moduleVersion
 
       - name: Optional code signing
         shell: pwsh
@@ -51,12 +61,12 @@ jobs:
           CLIAI_SIGN_PFX_PASSWORD: ${{ secrets.CLIAI_SIGN_PFX_PASSWORD }}
           CLIAI_SIGN_TIMESTAMP_URL: ${{ secrets.CLIAI_SIGN_TIMESTAMP_URL }}
         run: |
-          powershell -ExecutionPolicy Bypass -File .\scripts\sign-windows.ps1 -FilePath .\dist\cliai.exe
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\sign-windows.ps1 -FilePath .\dist\${{ matrix.asset_dir }}\cliai.exe
 
       - name: Archive and checksum
         shell: pwsh
         run: |
-          Compress-Archive -Path .\dist\cliai.exe -DestinationPath .\dist\${{ matrix.artifact }} -Force
+          Compress-Archive -Path .\dist\${{ matrix.asset_dir }}\* -DestinationPath .\dist\${{ matrix.artifact }} -Force
           Get-FileHash .\dist\${{ matrix.artifact }} -Algorithm SHA256 | ForEach-Object {
             "$($_.Hash)  ${{ matrix.artifact }}" | Set-Content .\dist\${{ matrix.artifact }}.sha256
           }
@@ -65,7 +75,226 @@ jobs:
         if: matrix.goarch == 'amd64'
         shell: pwsh
         run: |
-          powershell -ExecutionPolicy Bypass -File .\scripts\validate-release.ps1 -ExePath .\dist\cliai.exe
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\validate-release.ps1 -ExePath .\dist\${{ matrix.asset_dir }}\cliai.exe
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/${{ matrix.artifact }}
+            dist/${{ matrix.artifact }}.sha256
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-apt-repo:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build Linux binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          mkdir -p dist/linux-amd64 dist/linux-arm64
+
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
+            go build -trimpath -ldflags "-s -w -X github.com/sanqiu/cliai/internal/app.Version=${GITHUB_REF_NAME} -X github.com/sanqiu/cliai/internal/app.Commit=${GITHUB_SHA} -X github.com/sanqiu/cliai/internal/app.BuildDate=${build_date}" \
+            -o dist/linux-amd64/cliai .
+
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
+            go build -trimpath -ldflags "-s -w -X github.com/sanqiu/cliai/internal/app.Version=${GITHUB_REF_NAME} -X github.com/sanqiu/cliai/internal/app.Commit=${GITHUB_SHA} -X github.com/sanqiu/cliai/internal/app.BuildDate=${build_date}" \
+            -o dist/linux-arm64/cliai .
+
+      - name: Build Debian packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          ./scripts/new-deb-package.sh --version "${version}" --arch amd64 --binary ./dist/linux-amd64/cliai --output ./dist/deb/amd64
+          ./scripts/new-deb-package.sh --version "${version}" --arch arm64 --binary ./dist/linux-arm64/cliai --output ./dist/deb/arm64
+
+      - name: Generate apt repository metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          ./scripts/new-apt-repo.sh \
+            --repo-root "./dist/apt-repo/${version}" \
+            --deb "./dist/deb/amd64/cliai_${version}_amd64.deb" \
+            --deb "./dist/deb/arm64/cliai_${version}_arm64.deb"
+
+      - name: Optionally sign apt repository
+        shell: bash
+        env:
+          CLIAI_APT_GPG_KEY_FILE: ${{ secrets.CLIAI_APT_GPG_KEY_FILE }}
+          CLIAI_APT_GPG_KEY_ARMORED: ${{ secrets.CLIAI_APT_GPG_KEY_ARMORED }}
+          CLIAI_APT_GPG_KEY_ID: ${{ secrets.CLIAI_APT_GPG_KEY_ID }}
+          CLIAI_APT_GPG_PASSPHRASE: ${{ secrets.CLIAI_APT_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          ./scripts/sign-apt-repo.sh --repo-root "./dist/apt-repo/${version}"
+
+      - name: Optionally export apt public key
+        shell: bash
+        env:
+          CLIAI_APT_GPG_KEY_FILE: ${{ secrets.CLIAI_APT_GPG_KEY_FILE }}
+          CLIAI_APT_GPG_KEY_ARMORED: ${{ secrets.CLIAI_APT_GPG_KEY_ARMORED }}
+          CLIAI_APT_GPG_KEY_ID: ${{ secrets.CLIAI_APT_GPG_KEY_ID }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${CLIAI_APT_GPG_KEY_FILE:-}" || -n "${CLIAI_APT_GPG_KEY_ARMORED:-}" ]]; then
+            ./scripts/export-apt-public-key.sh --output "./dist/cliai-archive-keyring.asc"
+          else
+            echo "No apt signing key provided. Skipping public key export."
+          fi
+
+      - name: Archive apt repository and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          repo_archive="dist/cliai_apt_repo_${version}.tar.gz"
+          tar -C "./dist/apt-repo/${version}" -czf "${repo_archive}" .
+
+          for artifact in \
+            "./dist/deb/amd64/cliai_${version}_amd64.deb" \
+            "./dist/deb/arm64/cliai_${version}_arm64.deb" \
+            "${repo_archive}" \
+            "./dist/cliai-archive-keyring.asc"; do
+            if [[ ! -f "${artifact}" ]]; then
+              continue
+            fi
+            hash="$(sha256sum "${artifact}" | awk '{print $1}')"
+            printf "%s  %s\n" "${hash}" "$(basename "${artifact}")" > "${artifact}.sha256"
+          done
+
+      - name: Validate apt release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          extra_args=()
+          if [[ -f "./dist/apt-repo/${version}/dists/stable/Release.gpg" || -f "./dist/apt-repo/${version}/dists/stable/InRelease" ]]; then
+            extra_args+=(--require-signature)
+          fi
+          if [[ -f "./dist/cliai-archive-keyring.asc" ]]; then
+            extra_args+=(--public-key "./dist/cliai-archive-keyring.asc")
+          fi
+          ./scripts/validate-apt-release.sh \
+            --repo-root "./dist/apt-repo/${version}" \
+            --deb "./dist/deb/amd64/cliai_${version}_amd64.deb" \
+            --deb "./dist/deb/arm64/cliai_${version}_arm64.deb" \
+            "${extra_args[@]}"
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/deb/amd64/*.deb
+            dist/deb/amd64/*.deb.sha256
+            dist/deb/arm64/*.deb
+            dist/deb/arm64/*.deb.sha256
+            dist/cliai_apt_repo_*.tar.gz
+            dist/cliai_apt_repo_*.tar.gz.sha256
+            dist/cliai-archive-keyring.asc
+            dist/cliai-archive-keyring.asc.sha256
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-unix:
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            asset_dir: linux-amd64
+            artifact: cliai_Linux_x86_64.tar.gz
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            asset_dir: linux-arm64
+            artifact: cliai_Linux_ARM64.tar.gz
+          - runner: macos-13
+            goos: darwin
+            goarch: amd64
+            asset_dir: darwin-amd64
+            artifact: cliai_macOS_x86_64.tar.gz
+          - runner: macos-14
+            goos: darwin
+            goarch: arm64
+            asset_dir: darwin-arm64
+            artifact: cliai_macOS_ARM64.tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build binary and stage Unix installer
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          set -euo pipefail
+          asset_root="dist/${{ matrix.asset_dir }}"
+          mkdir -p "${asset_root}/scripts"
+          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          go build -trimpath -ldflags "-s -w -X github.com/sanqiu/cliai/internal/app.Version=${{ github.ref_name }} -X github.com/sanqiu/cliai/internal/app.Commit=${{ github.sha }} -X github.com/sanqiu/cliai/internal/app.BuildDate=${build_date}" -o "${asset_root}/cliai" .
+          cp scripts/install-unix.sh "${asset_root}/scripts/install-unix.sh"
+          chmod 755 "${asset_root}/cliai" "${asset_root}/scripts/install-unix.sh"
+
+      - name: Archive and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset_root="dist/${{ matrix.asset_dir }}"
+          artifact_path="dist/${{ matrix.artifact }}"
+          tar -C "${asset_root}" -czf "${artifact_path}" .
+          shasum -a 256 "${artifact_path}" | awk '{print $1 "  ${{ matrix.artifact }}"}' > "${artifact_path}.sha256"
+
+      - name: Release smoke test
+        if: matrix.goarch == 'amd64'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./dist/${{ matrix.asset_dir }}/cliai selftest --json
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2

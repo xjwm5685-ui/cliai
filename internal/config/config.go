@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -29,18 +30,62 @@ type OpenAIConfig struct {
 	TimeoutSeconds int    `json:"timeout_seconds"`
 }
 
-func defaultHistoryPath() string {
+func defaultShell() string {
+	if v := strings.ToLower(strings.TrimSpace(os.Getenv("CLIAI_SHELL"))); v != "" {
+		switch v {
+		case "powershell", "pwsh":
+			return "powershell"
+		case "bash", "zsh", "fish":
+			return v
+		}
+	}
+
+	switch runtime.GOOS {
+	case "windows":
+		return "powershell"
+	case "darwin":
+		return "zsh"
+	default:
+		if shell := filepath.Base(strings.TrimSpace(os.Getenv("SHELL"))); shell != "" {
+			switch shell {
+			case "pwsh":
+				return "powershell"
+			case "bash", "zsh", "fish":
+				return shell
+			}
+		}
+		return "bash"
+	}
+}
+
+func defaultHistoryPath(shell string) string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, "AppData", "Roaming", "Microsoft", "Windows", "PowerShell", "PSReadLine", "ConsoleHost_history.txt")
+
+	switch shell {
+	case "powershell":
+		if runtime.GOOS == "windows" {
+			return filepath.Join(home, "AppData", "Roaming", "Microsoft", "Windows", "PowerShell", "PSReadLine", "ConsoleHost_history.txt")
+		}
+		return filepath.Join(home, ".local", "share", "powershell", "PSReadLine", "ConsoleHost_history.txt")
+	case "zsh":
+		return filepath.Join(home, ".zsh_history")
+	case "fish":
+		return filepath.Join(home, ".local", "share", "fish", "fish_history")
+	case "bash":
+		fallthrough
+	default:
+		return filepath.Join(home, ".bash_history")
+	}
 }
 
 func Default() *Config {
+	shell := defaultShell()
 	return &Config{
-		Shell:       "powershell",
-		HistoryPath: defaultHistoryPath(),
+		Shell:       shell,
+		HistoryPath: defaultHistoryPath(shell),
 		Local: LocalConfig{
 			MaxHistory: 4000,
 		},
@@ -153,8 +198,13 @@ func Set(cfg *Config, key string, value string) error {
 		switch strings.ToLower(strings.TrimSpace(value)) {
 		case "powershell", "pwsh":
 			cfg.Shell = "powershell"
+		case "bash", "zsh", "fish":
+			cfg.Shell = strings.ToLower(strings.TrimSpace(value))
 		default:
-			return fmt.Errorf("unsupported shell: %s (only powershell is supported in v0.1.0)", value)
+			return fmt.Errorf("unsupported shell: %s (supported: powershell, bash, zsh, fish)", value)
+		}
+		if strings.TrimSpace(cfg.HistoryPath) == "" {
+			cfg.HistoryPath = defaultHistoryPath(cfg.Shell)
 		}
 	case "history_path":
 		cfg.HistoryPath = value

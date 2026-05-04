@@ -3,6 +3,7 @@ package predict
 import (
 	"fmt"
 	"math"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -210,29 +211,37 @@ func generateIntentCandidates(query string, shell string, ctx project.Context) [
 	}
 
 	if containsAny(norm, "安装", "install", "setup") {
+		searchCmd, installCmd, _, _, _ := packageManagerCommands(arg)
 		result = append(result,
-			Candidate{Command: "winget search " + arg, Reason: "search likely package first", Source: "template", Score: 120, Risk: riskLevel("winget search " + arg)},
-			Candidate{Command: "winget install " + arg, Reason: "install package from natural-language intent", Source: "template", Score: 128, Risk: riskLevel("winget install " + arg)},
+			Candidate{Command: searchCmd, Reason: "search likely package first", Source: "template", Score: 120, Risk: riskLevel(searchCmd)},
+			Candidate{Command: installCmd, Reason: "install package from natural-language intent", Source: "template", Score: 128, Risk: riskLevel(installCmd)},
 		)
 	}
 	if containsAny(norm, "卸载", "uninstall", "remove") {
-		result = append(result, Candidate{Command: "winget uninstall " + arg, Reason: "remove package from natural-language intent", Source: "template", Score: 124, Risk: riskLevel("winget uninstall " + arg)})
+		_, _, _, uninstallCmd, _ := packageManagerCommands(arg)
+		result = append(result, Candidate{Command: uninstallCmd, Reason: "remove package from natural-language intent", Source: "template", Score: 124, Risk: riskLevel(uninstallCmd)})
 	}
 	if containsAny(norm, "升级", "更新", "upgrade", "update") {
+		_, _, upgradeAllCmd, _, upgradeCmd := packageManagerCommands(arg)
 		if arg == "PACKAGE_OR_TARGET" {
-			result = append(result, Candidate{Command: "winget upgrade --all", Reason: "upgrade all packages", Source: "template", Score: 118, Risk: riskLevel("winget upgrade --all")})
+			result = append(result, Candidate{Command: upgradeAllCmd, Reason: "upgrade all packages", Source: "template", Score: 118, Risk: riskLevel(upgradeAllCmd)})
 		} else {
-			result = append(result, Candidate{Command: "winget upgrade " + arg, Reason: "upgrade specific package", Source: "template", Score: 118, Risk: riskLevel("winget upgrade " + arg)})
+			result = append(result, Candidate{Command: upgradeCmd, Reason: "upgrade specific package", Source: "template", Score: 118, Risk: riskLevel(upgradeCmd)})
 		}
 	}
 	if containsAny(norm, "搜索", "查找", "search", "find") {
-		result = append(result, Candidate{Command: "winget search " + arg, Reason: "search package by keyword", Source: "template", Score: 110, Risk: riskLevel("winget search " + arg)})
+		searchCmd, _, _, _, _ := packageManagerCommands(arg)
+		result = append(result, Candidate{Command: searchCmd, Reason: "search package by keyword", Source: "template", Score: 110, Risk: riskLevel(searchCmd)})
 		if shell == "powershell" {
 			result = append(result, Candidate{Command: "Select-String -Path . -Pattern \"" + arg + "\"", Reason: "search inside files", Source: "template", Score: 102, Risk: riskLevel("Select-String")})
+		} else {
+			result = append(result, Candidate{Command: "grep -R \"" + arg + "\" .", Reason: "search inside files", Source: "template", Score: 102, Risk: riskLevel("grep -R")})
 		}
 	}
 	if shell == "powershell" && containsAny(norm, "列出", "查看文件", "list files", "show files") {
 		result = append(result, Candidate{Command: "Get-ChildItem", Reason: "list current directory", Source: "template", Score: 106, Risk: riskLevel("Get-ChildItem")})
+	} else if shell != "powershell" && containsAny(norm, "列出", "查看文件", "list files", "show files") {
+		result = append(result, Candidate{Command: "ls -la", Reason: "list current directory", Source: "template", Score: 106, Risk: riskLevel("ls -la")})
 	}
 	if shell == "powershell" && containsAny(norm, "进入", "切换目录", "go to", "cd") && arg != "PACKAGE_OR_TARGET" {
 		matched := project.MatchDirectory(ctx, arg)
@@ -241,6 +250,13 @@ func generateIntentCandidates(query string, shell string, ctx project.Context) [
 			target = ".\\" + matched
 		}
 		result = append(result, Candidate{Command: "Set-Location " + target, Reason: "change directory", Source: "template", Score: 106, Risk: riskLevel("Set-Location " + target)})
+	} else if shell != "powershell" && containsAny(norm, "进入", "切换目录", "go to", "cd") && arg != "PACKAGE_OR_TARGET" {
+		matched := project.MatchDirectory(ctx, arg)
+		target := arg
+		if matched != "" {
+			target = "./" + matched
+		}
+		result = append(result, Candidate{Command: "cd " + target, Reason: "change directory", Source: "template", Score: 106, Risk: riskLevel("cd " + target)})
 	}
 	if containsAny(norm, "测试", "run tests", "test") {
 		result = append(result, Candidate{Command: "go test ./...", Reason: "run Go tests", Source: "template", Score: 104, Risk: riskLevel("go test ./...")})
@@ -309,11 +325,21 @@ func generateProjectCandidates(query string, shell string, ctx project.Context) 
 			command := "Set-Location .\\" + match
 			result = append(result, Candidate{Command: command, Reason: "matched current project directory", Source: "context", Score: 134, Risk: riskLevel(command)})
 		}
+	} else if shell != "powershell" && containsAny(norm, "进入", "cd", "go to", "切换目录") {
+		if match := project.MatchDirectory(ctx, arg); match != "" {
+			command := "cd ./" + match
+			result = append(result, Candidate{Command: command, Reason: "matched current project directory", Source: "context", Score: 134, Risk: riskLevel(command)})
+		}
 	}
 
 	if shell == "powershell" && containsAny(norm, "读取", "打开文件", "read file", "cat") {
 		if match := project.MatchFile(ctx, arg); match != "" {
 			command := "Get-Content .\\" + match
+			result = append(result, Candidate{Command: command, Reason: "matched current project file", Source: "context", Score: 134, Risk: riskLevel(command)})
+		}
+	} else if shell != "powershell" && containsAny(norm, "读取", "打开文件", "read file", "cat") {
+		if match := project.MatchFile(ctx, arg); match != "" {
+			command := "cat ./" + match
 			result = append(result, Candidate{Command: command, Reason: "matched current project file", Source: "context", Score: 134, Risk: riskLevel(command)})
 		}
 	}
@@ -443,6 +469,17 @@ func riskLevel(command string) string {
 		return "caution"
 	default:
 		return "safe"
+	}
+}
+
+func packageManagerCommands(arg string) (search string, install string, upgradeAll string, uninstall string, upgrade string) {
+	switch runtime.GOOS {
+	case "darwin":
+		return "brew search " + arg, "brew install " + arg, "brew upgrade", "brew uninstall " + arg, "brew upgrade " + arg
+	case "linux":
+		return "apt search " + arg, "sudo apt install " + arg, "sudo apt upgrade", "sudo apt remove " + arg, "sudo apt install --only-upgrade " + arg
+	default:
+		return "winget search " + arg, "winget install " + arg, "winget upgrade --all", "winget uninstall " + arg, "winget upgrade " + arg
 	}
 }
 

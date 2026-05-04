@@ -9,6 +9,24 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 ### Added
 - Chocolatey package generation script and package layout for publishing `cliai` as `sanqiu-cliai`
 
+## [0.2.2] - 2026-05-04
+
+### Added
+- Cross-platform GitHub Actions CI across Windows, Linux, and macOS
+- Linux and macOS release assets, local Unix release script, and `install-unix.sh`
+- Homebrew formula generation script and packaging docs
+- Debian package generation, apt repository metadata generation, apt signing, public-key export, and apt asset validation scripts
+- Release checklist and Unix release-environment precheck script
+
+### Changed
+- Release workflow now publishes Windows zip packages, Unix tarballs, Debian packages, apt repository archives, optional apt signatures, and optional public key assets
+- Release and README documentation now describe the cross-platform install, release, and validation flow in both Chinese and English
+
+### Fixed
+- Local release scripts now use a PowerShell-compatible UTC timestamp format
+- Unix local release flow now handles `go.exe` path conversion and `dpkg-deb` permission quirks in mixed Windows/bash environments
+- Release documentation now reflects that apt build, signing, public-key export, and validation are part of the automated workflow
+
 ## [0.2.1] - 2026-05-03
 
 ### Fixed

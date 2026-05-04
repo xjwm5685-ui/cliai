@@ -1,4 +1,9 @@
 bin/
+obj/
 dist/
 *.exe
 *.zip
+*.deb
+*.nupkg
+*.sha256
+*.tar.gz

@@ -8,7 +8,14 @@ on:
 
 jobs:
   test:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
 
     steps:
       - name: Checkout
@@ -22,7 +29,7 @@ jobs:
       - name: Run gofmt check
         shell: pwsh
         run: |
-          $files = Get-ChildItem -Recurse -Filter *.go | Select-Object -ExpandProperty FullName
+          $files = git ls-files '*.go'
           $diff = gofmt -l $files
           if ($diff) {
             Write-Error "The following files are not formatted:`n$diff"
@@ -37,9 +44,14 @@ jobs:
       - name: Build binary
         shell: pwsh
         run: |
-          go build -trimpath -ldflags "-X github.com/sanqiu/cliai/internal/app.Version=ci -X github.com/sanqiu/cliai/internal/app.Commit=${env:GITHUB_SHA} -X github.com/sanqiu/cliai/internal/app.BuildDate=$(Get-Date -Format s)" -o dist/cliai.exe .
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          $binaryName = if ($IsWindows) { "cliai.exe" } else { "cliai" }
+          $binaryPath = Join-Path "dist" $binaryName
+          $buildDate = Get-Date -Format s
+          go build -trimpath -ldflags "-X github.com/sanqiu/cliai/internal/app.Version=ci -X github.com/sanqiu/cliai/internal/app.Commit=${env:GITHUB_SHA} -X github.com/sanqiu/cliai/internal/app.BuildDate=$buildDate" -o $binaryPath .
 
       - name: Run selftest
         shell: pwsh
         run: |
-          ./dist/cliai.exe selftest --json
+          $binaryName = if ($IsWindows) { "cliai.exe" } else { "cliai" }
+          & (Join-Path (Resolve-Path "dist") $binaryName) selftest --json
