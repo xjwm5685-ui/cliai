@@ -1,16 +1,12 @@
-param(
-  [string]$Version = "",
-  [ValidateSet("amd64", "arm64")]
-  [string]$Arch = "",
-  [string]$InstallDir = "",
-  [ValidateSet("Plugin", "HistoryAndPlugin")]
-  [string]$PredictionSource = "Plugin",
-  [switch]$SkipPathUpdate,
-  [switch]$SkipShellIntegration,
-  [switch]$Force
-)
-
 $ErrorActionPreference = "Stop"
+
+$CliaiVersion = ""
+$CliaiArch = ""
+$CliaiInstallDir = ""
+$CliaiPredictionSource = "Plugin"
+$CliaiSkipPathUpdate = $false
+$CliaiSkipShellIntegration = $false
+$CliaiForce = $false
 
 function Get-BoolEnvValue {
   param(
@@ -69,6 +65,22 @@ function Resolve-CliaiArchitecture {
   switch ($architecture) {
     "arm64" { return "arm64" }
     default { return "amd64" }
+  }
+}
+
+function Resolve-PredictionSource {
+  param(
+    [string]$PreferredSource
+  )
+
+  if ([string]::IsNullOrWhiteSpace($PreferredSource)) {
+    return "Plugin"
+  }
+
+  switch ($PreferredSource.Trim()) {
+    "Plugin" { return "Plugin" }
+    "HistoryAndPlugin" { return "HistoryAndPlugin" }
+    default { throw "Unsupported prediction source: $PreferredSource" }
   }
 }
 
@@ -171,6 +183,7 @@ function Install-Cliai {
   }
 
   $resolvedArch = Resolve-CliaiArchitecture -PreferredArch $RequestedArch
+  $RequestedPredictionSource = Resolve-PredictionSource -PreferredSource $RequestedPredictionSource
   $assetNames = Get-CliaiWindowsAssetNames -Architecture $resolvedArch
 
   if (-not $TargetInstallDir) {
@@ -248,41 +261,41 @@ function Install-Cliai {
   }
 }
 
-if (-not $Version) {
-  $Version = [Environment]::GetEnvironmentVariable("CLIAI_VERSION")
+if (-not $CliaiVersion) {
+  $CliaiVersion = [Environment]::GetEnvironmentVariable("CLIAI_VERSION")
 }
-if (-not $Arch) {
+if (-not $CliaiArch) {
   $envArch = [Environment]::GetEnvironmentVariable("CLIAI_ARCH")
   if (-not [string]::IsNullOrWhiteSpace($envArch)) {
-    $Arch = $envArch
+    $CliaiArch = $envArch
   }
 }
-if (-not $InstallDir) {
-  $InstallDir = [Environment]::GetEnvironmentVariable("CLIAI_INSTALL_DIR")
+if (-not $CliaiInstallDir) {
+  $CliaiInstallDir = [Environment]::GetEnvironmentVariable("CLIAI_INSTALL_DIR")
 }
-if (-not $PSBoundParameters.ContainsKey("PredictionSource")) {
+if ($CliaiPredictionSource -eq "Plugin") {
   $envPredictionSource = [Environment]::GetEnvironmentVariable("CLIAI_PREDICTION_SOURCE")
   if (-not [string]::IsNullOrWhiteSpace($envPredictionSource)) {
-    $PredictionSource = $envPredictionSource
+    $CliaiPredictionSource = $envPredictionSource
   }
 }
-if (-not $PSBoundParameters.ContainsKey("SkipPathUpdate") -and (Get-BoolEnvValue -Name "CLIAI_SKIP_PATH_UPDATE")) {
-  $SkipPathUpdate = $true
+if (Get-BoolEnvValue -Name "CLIAI_SKIP_PATH_UPDATE") {
+  $CliaiSkipPathUpdate = $true
 }
-if (-not $PSBoundParameters.ContainsKey("SkipShellIntegration") -and (Get-BoolEnvValue -Name "CLIAI_SKIP_SHELL_INTEGRATION")) {
-  $SkipShellIntegration = $true
+if (Get-BoolEnvValue -Name "CLIAI_SKIP_SHELL_INTEGRATION") {
+  $CliaiSkipShellIntegration = $true
 }
-if (-not $PSBoundParameters.ContainsKey("Force") -and (Get-BoolEnvValue -Name "CLIAI_FORCE_INSTALL")) {
-  $Force = $true
+if (Get-BoolEnvValue -Name "CLIAI_FORCE_INSTALL") {
+  $CliaiForce = $true
 }
 
 if (-not (Get-BoolEnvValue -Name "CLIAI_INSTALL_NO_AUTORUN")) {
   Install-Cliai `
-    -RequestedVersion $Version `
-    -RequestedArch $Arch `
-    -TargetInstallDir $InstallDir `
-    -RequestedPredictionSource $PredictionSource `
-    -DoSkipPathUpdate:$SkipPathUpdate `
-    -DoSkipShellIntegration:$SkipShellIntegration `
-    -DoForce:$Force
+    -RequestedVersion $CliaiVersion `
+    -RequestedArch $CliaiArch `
+    -TargetInstallDir $CliaiInstallDir `
+    -RequestedPredictionSource $CliaiPredictionSource `
+    -DoSkipPathUpdate:$CliaiSkipPathUpdate `
+    -DoSkipShellIntegration:$CliaiSkipShellIntegration `
+    -DoForce:$CliaiForce
 }
