@@ -1,27 +1,29 @@
 # cliai
 
-`cliai` is a cross-platform command prediction CLI for Windows, Linux, and macOS, with first-class PowerShell inline prediction support.
+`cliai` is a cross-platform, local-first command prediction and completion tool for Windows, Linux, and macOS.
 
-It combines:
+It is not a command runner. It is a command suggester that tries to understand your shell context:
 
-- natural-language intent matching
-- local shell history from PowerShell, bash, zsh, and fish
-- project-context detection
-- lightweight feedback learning
-- optional cloud reranking with OpenAI-compatible APIs
+- combines local history, built-in rules, natural-language templates, and project context
+- learns from accepted suggestions over time
+- labels risky commands instead of hiding them behind autocomplete
+- stays local and no longer depends on external AI services
 
-The goal is not just prefix completion, but high-quality command suggestions for real workflows.
+Project links:
+
+- GitHub repository: [xjwm5685-ui/cliai](https://github.com/xjwm5685-ui/cliai)
+- Chinese README: [README.md](file:///d:/sanqiu/cliai/README.md)
+- Release guide: [RELEASE.md](file:///d:/sanqiu/cliai/docs/RELEASE.md)
 
 ## Highlights
 
-- Cross-platform CLI core for Windows, Linux, and macOS
-- PowerShell real-time grey inline predictions through `CliaiPredictor`
-- Context-aware suggestions for Go, Node, Python, Docker, and Git projects
+- Local prediction with history, built-in command knowledge, templates, and project context
+- Natural-language input for common command intents
+- Project-aware ranking for `Go`, `Node`, `Python`, `Docker`, and `Git`
 - Feedback learning from accepted suggestions
-- Risk labels for suggested commands
-- Interactive selection mode and clipboard copy support
-- GitHub Actions CI on Windows, Linux, and macOS
-- Release assets for Windows zip packages, Unix tarballs, Debian packages, and apt repository archives
+- Risk labels: `safe`, `caution`, `danger`
+- Table, JSON, command-only, interactive, and clipboard-friendly output modes
+- Real-time shell integration for PowerShell, zsh, and bash
 
 ## Support Matrix
 
@@ -30,17 +32,23 @@ The goal is not just prefix completion, but high-quality command suggestions for
 | Core CLI build and run | Supported | Supported | Supported |
 | Default `history import` paths | PowerShell | bash/zsh/fish/pwsh | zsh/bash/pwsh |
 | `predict` / `selftest` / `config` | Supported | Supported | Supported |
-| GitHub Release package | zip | tar.gz | tar.gz |
-| Install helper | `install-powershell.ps1` | `install-unix.sh` | `install-unix.sh` |
-| Real-time inline prediction | Supported | Native in `zsh`, quick-accept in `bash`, also available via `pwsh` | Native in `zsh`, quick-accept in `bash`, also available via `pwsh` |
-| Native package channel | winget / Chocolatey | `.deb` and apt repo scripts included | Homebrew formula script included |
+| GitHub Release artifacts | zip | tar.gz / `.deb` | tar.gz |
+| Install scripts | `install.ps1` | `install.sh` / `install-unix.sh` | `install-unix.sh` |
+| Real-time prediction | Native in PowerShell | Native in `zsh`, quick-accept in `bash`, also works in `pwsh` | Native in `zsh`, quick-accept in `bash`, also works in `pwsh` |
 
 ## Quick Start
+
+Clone and build:
+
+```powershell
+git clone https://github.com/xjwm5685-ui/cliai.git
+cd cliai
+go build -o .\bin\cliai.exe .
+```
 
 Windows PowerShell:
 
 ```powershell
-go build -o .\bin\cliai.exe .
 .\bin\cliai.exe history import
 .\bin\cliai.exe predict "install vscode"
 .\bin\cliai.exe shell install powershell
@@ -51,134 +59,76 @@ Linux / macOS:
 ```bash
 go build -o ./bin/cliai .
 ./bin/cliai history import
-./bin/cliai predict "install vscode"
+./bin/cliai predict "run tests"
 ./bin/cliai shell install zsh
 ```
 
 ## Installation
 
-Windows one-liner:
+### Windows one-liner
 
 ```powershell
 iwr -useb https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.ps1 | iex
 ```
 
-The bootstrap installer detects `amd64` vs `arm64`, downloads the latest Windows release zip and `.sha256`, verifies the checksum, adds `cliai` to the user `PATH`, and enables the PowerShell predictor integration.
+This installer:
 
-From GitHub Release:
+- detects `amd64` vs `arm64`
+- downloads the latest Windows release and `.sha256`
+- verifies the checksum
+- adds `cliai` to the user `PATH`
+- enables the PowerShell predictor integration
 
-- Windows: download `cliai_Windows_x86_64.zip` or `cliai_Windows_ARM64.zip`, then run `.\cliai.exe shell install powershell`
-- Linux/macOS: download the matching `cliai_Linux_*.tar.gz` or `cliai_macOS_*.tar.gz`, extract it, then run `./scripts/install-unix.sh`
+### Linux apt install
 
-If you use `zsh`, enable native grey inline suggestions with:
-
-```bash
-cliai shell install zsh
-```
-
-If you use `bash`, enable the quick-accept bindings with:
-
-```bash
-cliai shell install bash
-```
-
-If `pwsh` is available on Linux/macOS, `install-unix.sh` will also remind you to run:
-
-```bash
-cliai shell install powershell
-```
-
-Planned Homebrew install command:
-
-```bash
-brew install <your-tap>/cliai
-```
-
-APT install:
-
-Bootstrap the apt source:
+Add the apt source:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.sh | bash
 ```
 
-Then install:
+Install the package:
 
 ```bash
 sudo apt update
 sudo apt install cliai
 ```
 
-Current apt status:
-
-- the release workflow already builds `.deb` packages, apt repository metadata, optional signatures, optional public key export, and apt asset validation
-- the apt repository is published from the `apt-repo` branch on GitHub
-- if a public apt signing key is available, the bootstrap script installs it automatically
-- otherwise the bootstrap script falls back to `trusted=yes` so `apt update` and `apt install cliai` still work
-
-## Local Release Builds
-
-- Windows precheck: `powershell -ExecutionPolicy Bypass -File .\scripts\check-release-env.ps1`
-- Windows local release: `powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.1`
-- Linux/macOS precheck: `./scripts/check-release-env.sh`
-- Linux/macOS local release: `./scripts/release-local.sh 0.2.1`
-
-If you require apt signing locally, run:
-
-```bash
-./scripts/check-release-env.sh --require-apt-signature
-./scripts/release-local.sh 0.2.1 --require-apt-signature
-```
-
-## Real-Time Shell Predictions
-
-`cliai` supports real-time command prediction in multiple shells:
-
-- PowerShell uses the `CliaiPredictor` binary predictor module
-- zsh uses native inline grey ghost text
-- bash provides native keybindings to accept the current top prediction quickly
-
-Requirements:
-
-- PowerShell `7.2+`
-- PSReadLine `2.2.2+`
-- `.NET SDK 8` only when the installer needs to build the predictor locally
-
-Install from source:
-
-```powershell
-go build -o .\bin\cliai.exe .
-.\bin\cliai.exe shell install powershell
-```
-
-The installer:
-
-- uses the bundled predictor module when it exists
-- otherwise builds `predictor\CliaiPredictor`
-- installs the module to your PowerShell user module path
-- imports `CliaiPredictor` from your profile
-- enables `Plugin` prediction source by default
-- adds `Alt+RightArrow` and `Alt+Shift+RightArrow` key handlers
-
-Verify registration:
-
-```powershell
-Import-Module CliaiPredictor
-(Get-PSSubsystem -Kind CommandPredictor).Implementations |
-  Select-Object Id, Name, Description
-```
-
-For Linux, macOS, or WSL2:
+Then enable shell integration:
 
 ```bash
 cliai shell install zsh
 ```
 
-Recommended shell behavior:
+For `bash`:
 
-- `zsh`: native grey inline suggestion while you type
-- `bash`: `Alt+RightArrow` accepts the top prediction, `Alt+Shift+RightArrow` accepts one word
-- `pwsh`: PowerShell plugin-based inline prediction
+```bash
+cliai shell install bash
+```
+
+Default keybindings:
+
+- `Alt+RightArrow`: accept the whole prediction
+- `Alt+Shift+RightArrow`: accept one word
+- `Alt+f`: more reliable word-accept fallback in many Linux and WSL2 terminals
+
+If `pwsh` is installed:
+
+```bash
+cliai shell install powershell
+```
+
+### GitHub Release install
+
+- Windows: download `cliai_Windows_x86_64.zip` or `cliai_Windows_ARM64.zip`, then run `.\cliai.exe shell install powershell`
+- Linux/macOS: download the matching `cliai_Linux_*.tar.gz` or `cliai_macOS_*.tar.gz`, extract it, then run `./scripts/install-unix.sh`
+
+### Package channels
+
+- winget package: `Sanqiu.Cliai`
+- Chocolatey package: `sanqiu-cliai`
+- apt package: `cliai`
+- Homebrew still requires a separate tap
 
 ## Main Commands
 
@@ -190,83 +140,228 @@ cliai config show
 cliai config set <key> <value>
 cliai feedback show
 cliai feedback accept --query <query> <command>
-cliai shell init powershell
-cliai shell install powershell
+cliai shell init <powershell|bash|zsh>
+cliai shell install <powershell|bash|zsh>
 cliai selftest
 cliai version
 ```
 
-## Package Channels
+## `predict`
 
-- Expected winget package: `Sanqiu.Cliai`
-- Expected Chocolatey package: `sanqiu-cliai`
-- Planned Homebrew formula: `cliai`
-- Planned apt package name: `cliai`
-
-Chocolatey packaging files can be generated with:
+Usage:
 
 ```powershell
-.\scripts\new-chocolatey-package.ps1 `
-  -Version 0.2.1 `
-  -X64Url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_Windows_x86_64.zip `
-  -X64Sha256 YOUR_X64_SHA256
+cliai predict [flags] <query>
 ```
 
-Homebrew formula files can be generated with:
+Flags:
+
+- `--limit <N>`
+- `--shell <name>`
+- `--json`
+- `--cwd <path>`
+- `--debug`
+- `--copy`
+- `--command-only`
+- `--interactive`
+
+Examples:
+
+```powershell
+cliai predict "git st"
+cliai predict --limit 3 "install vscode"
+cliai predict --json "search docker"
+cliai predict --cwd D:\code\myapp "start"
+cliai predict --debug "enter src"
+cliai predict --command-only "run tests"
+cliai predict --interactive --copy "enter src"
+```
+
+Default columns:
+
+- `COMMAND`
+- `SOURCE`
+- `RISK`
+- `WHY`
+
+Typical `source` values:
+
+- `template`
+- `builtin`
+- `context`
+- `powershell-history`
+
+## `feedback`
+
+```powershell
+cliai feedback show
+cliai feedback show --json
+cliai feedback accept --query "install vscode" winget install vscode
+```
+
+Use it to inspect accepted suggestions and manually reinforce preferred commands.
+
+## `history`
+
+```powershell
+cliai history import [--file path]
+```
+
+Default history sources:
+
+- Windows PowerShell: `%USERPROFILE%\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt`
+- Linux/macOS PowerShell: `~/.local/share/powershell/PSReadLine/ConsoleHost_history.txt`
+- bash: `~/.bash_history`
+- zsh: `~/.zsh_history`
+- fish: `~/.local/share/fish/fish_history`
+
+## `config`
+
+Show config:
+
+```powershell
+cliai config show
+```
+
+Set config values:
+
+```powershell
+cliai config set shell powershell
+cliai config set history_path D:\custom\ConsoleHost_history.txt
+cliai config set local.max_history 5000
+```
+
+Supported keys:
+
+- `shell`
+- `history_path`
+- `local.max_history`
+
+Example config:
+
+```json
+{
+  "shell": "powershell",
+  "history_path": "C:\\Users\\YOUR_NAME\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\PSReadLine\\ConsoleHost_history.txt",
+  "local": {
+    "max_history": 4000
+  }
+}
+```
+
+Supported environment variables:
+
+- `CLIAI_SHELL`
+- `CLIAI_HISTORY_PATH`
+
+## Real-Time Shell Predictions
+
+### PowerShell
+
+`cliai shell install powershell` installs `CliaiPredictor` and enables real-time grey inline predictions.
+
+Requirements:
+
+- PowerShell `7.2+`
+- PSReadLine `2.2.2+`
+- `.NET SDK 8` only if the installer needs to build the predictor locally
+
+Verify registration:
+
+```powershell
+Import-Module CliaiPredictor
+(Get-PSSubsystem -Kind CommandPredictor).Implementations |
+  Select-Object Id, Name, Description
+```
+
+### zsh
+
+`zsh` gets native inline ghost text:
 
 ```bash
-./scripts/new-homebrew-formula.sh \
-  --version 0.2.1 \
-  --darwin-amd64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_macOS_x86_64.tar.gz \
-  --darwin-amd64-sha256 YOUR_MACOS_X64_SHA256 \
-  --darwin-arm64-url https://github.com/xjwm5685-ui/cliai/releases/download/v0.2.1/cliai_macOS_ARM64.tar.gz \
-  --darwin-arm64-sha256 YOUR_MACOS_ARM64_SHA256
+cliai shell install zsh
 ```
 
-Debian package staging trees and `.deb` files can be generated with:
+### bash
+
+`bash` gets quick-accept bindings:
 
 ```bash
-./scripts/new-deb-package.sh --version 0.2.1 --arch amd64
-./scripts/new-deb-package.sh --version 0.2.1 --arch arm64
+cliai shell install bash
 ```
 
-APT repository metadata can be generated with:
+Common bindings:
 
-```bash
-./scripts/new-apt-repo.sh \
-  --repo-root ./packaging/apt/0.2.1 \
-  --deb ./packaging/deb/0.2.1/amd64/cliai_0.2.1_amd64.deb \
-  --deb ./packaging/deb/0.2.1/arm64/cliai_0.2.1_arm64.deb
+- `Alt+RightArrow`: accept the whole prediction
+- `Alt+Shift+RightArrow`: accept one word
+- `Alt+f`: fallback one-word accept shortcut
+
+## How It Works
+
+The prediction pipeline is fully local:
+
+1. read the current working directory, shell, history cache, and feedback records
+2. detect project markers such as `go.mod`, `package.json`, `pyproject.toml`, `Dockerfile`, and `.git`
+3. recall candidates from built-in rules, templates, project context, and shell history
+4. rank them using prefix matches, keywords, frequency, recency, and feedback bonuses
+5. print results or enter interactive mode and write feedback after acceptance
+
+## Project Layout
+
+```text
+cliai/
+├─ .github/
+├─ docs/
+├─ internal/
+│  ├─ app/
+│  ├─ config/
+│  ├─ feedback/
+│  ├─ history/
+│  ├─ predict/
+│  └─ project/
+├─ packaging/
+├─ predictor/
+├─ scripts/
+├─ README.md
+├─ README_EN.md
+├─ go.mod
+└─ main.go
 ```
 
-APT repository signing files can be generated with:
+## Development
 
-```bash
-./scripts/sign-apt-repo.sh \
-  --repo-root ./packaging/apt/0.2.1 \
-  --require-signature
+Run locally:
+
+```powershell
+go run . version
+go run . selftest --json
+go run . predict "install vscode"
+go run . predict --debug "run tests"
 ```
 
-In the tagged GitHub Release workflow, these steps are already automated when the apt GPG key secrets are provided.
+Build:
 
-The public apt key can be exported with:
-
-```bash
-./scripts/export-apt-public-key.sh --output ./dist/cliai-archive-keyring.asc
+```powershell
+go build -o cliai.exe .
 ```
 
-If you publish the apt repository at a URL such as `https://example.com/cliai/apt`, end users can install with:
+Run tests:
 
-```bash
-sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://example.com/cliai/apt/cliai-archive-keyring.asc | sudo tee /etc/apt/keyrings/cliai-archive-keyring.asc >/dev/null
-echo "deb [signed-by=/etc/apt/keyrings/cliai-archive-keyring.asc] https://example.com/cliai/apt stable main" | sudo tee /etc/apt/sources.list.d/cliai.list >/dev/null
-sudo apt update
-sudo apt install cliai
+```powershell
+go test ./...
 ```
 
-## Release Docs
+Prediction benchmark:
 
-- Chinese README: [README.md](file:///d:/sanqiu/cli%20ai/README.md)
-- Release guide: [RELEASE.md](file:///d:/sanqiu/cli%20ai/docs/RELEASE.md)
-- GitHub repository: [xjwm5685-ui/cliai](https://github.com/xjwm5685-ui/cliai)
+```powershell
+go test ./internal/predict -run ^$ -bench BenchmarkPredict
+```
+
+## Release
+
+- CI workflow: `.github/workflows/ci.yml`
+- Release workflow: `.github/workflows/release.yml`
+
+When you push a `v*` tag, the release workflow builds Windows zip packages, Linux/macOS tarballs, Linux `.deb` packages, apt metadata, and SHA256 files.
+
+See [RELEASE.md](file:///d:/sanqiu/cliai/docs/RELEASE.md) for details.

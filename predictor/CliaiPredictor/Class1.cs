@@ -231,7 +231,7 @@ internal sealed class PredictorBridgeClient : IDisposable
             StartInfo = new ProcessStartInfo
             {
                 FileName = ResolveExecutable(),
-                Arguments = "predictor serve --limit 8 --shell powershell --no-cloud",
+                Arguments = "predictor serve --limit 8 --shell powershell",
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,

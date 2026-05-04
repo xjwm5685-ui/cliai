@@ -26,7 +26,6 @@ type Request struct {
 	CWD             string
 	Shell           string
 	Limit           int
-	NoCloud         bool
 	Project         project.Context
 	FeedbackBonuses map[string]float64
 }

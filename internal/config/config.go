@@ -12,22 +12,13 @@ import (
 )
 
 type Config struct {
-	Shell       string       `json:"shell"`
-	HistoryPath string       `json:"history_path"`
-	Local       LocalConfig  `json:"local"`
-	OpenAI      OpenAIConfig `json:"openai"`
+	Shell       string      `json:"shell"`
+	HistoryPath string      `json:"history_path"`
+	Local       LocalConfig `json:"local"`
 }
 
 type LocalConfig struct {
 	MaxHistory int `json:"max_history"`
-}
-
-type OpenAIConfig struct {
-	Enabled        bool   `json:"enabled"`
-	BaseURL        string `json:"base_url"`
-	APIKey         string `json:"api_key"`
-	Model          string `json:"model"`
-	TimeoutSeconds int    `json:"timeout_seconds"`
 }
 
 func defaultShell() string {
@@ -88,12 +79,6 @@ func Default() *Config {
 		HistoryPath: defaultHistoryPath(shell),
 		Local: LocalConfig{
 			MaxHistory: 4000,
-		},
-		OpenAI: OpenAIConfig{
-			Enabled:        false,
-			BaseURL:        "https://api.openai.com/v1",
-			Model:          "gpt-4.1-mini",
-			TimeoutSeconds: 20,
 		},
 	}
 }
@@ -178,15 +163,6 @@ func applyEnv(cfg *Config) {
 	if v := os.Getenv("CLIAI_SHELL"); v != "" {
 		cfg.Shell = v
 	}
-	if v := os.Getenv("CLIAI_OPENAI_API_KEY"); v != "" {
-		cfg.OpenAI.APIKey = v
-	}
-	if v := os.Getenv("CLIAI_OPENAI_BASE_URL"); v != "" {
-		cfg.OpenAI.BaseURL = v
-	}
-	if v := os.Getenv("CLIAI_OPENAI_MODEL"); v != "" {
-		cfg.OpenAI.Model = v
-	}
 	if v := os.Getenv("CLIAI_HISTORY_PATH"); v != "" {
 		cfg.HistoryPath = v
 	}
@@ -195,6 +171,8 @@ func applyEnv(cfg *Config) {
 func Set(cfg *Config, key string, value string) error {
 	switch strings.ToLower(key) {
 	case "shell":
+		oldShell := cfg.Shell
+		oldDefaultHistoryPath := defaultHistoryPath(oldShell)
 		switch strings.ToLower(strings.TrimSpace(value)) {
 		case "powershell", "pwsh":
 			cfg.Shell = "powershell"
@@ -203,7 +181,7 @@ func Set(cfg *Config, key string, value string) error {
 		default:
 			return fmt.Errorf("unsupported shell: %s (supported: powershell, bash, zsh, fish)", value)
 		}
-		if strings.TrimSpace(cfg.HistoryPath) == "" {
+		if strings.TrimSpace(cfg.HistoryPath) == "" || cfg.HistoryPath == oldDefaultHistoryPath {
 			cfg.HistoryPath = defaultHistoryPath(cfg.Shell)
 		}
 	case "history_path":
@@ -214,24 +192,6 @@ func Set(cfg *Config, key string, value string) error {
 			return fmt.Errorf("local.max_history must be a number")
 		}
 		cfg.Local.MaxHistory = n
-	case "openai.enabled":
-		b, err := strconv.ParseBool(value)
-		if err != nil {
-			return fmt.Errorf("openai.enabled must be true or false")
-		}
-		cfg.OpenAI.Enabled = b
-	case "openai.base_url":
-		cfg.OpenAI.BaseURL = value
-	case "openai.api_key":
-		cfg.OpenAI.APIKey = value
-	case "openai.model":
-		cfg.OpenAI.Model = value
-	case "openai.timeout_seconds":
-		n, err := strconv.Atoi(value)
-		if err != nil {
-			return fmt.Errorf("openai.timeout_seconds must be a number")
-		}
-		cfg.OpenAI.TimeoutSeconds = n
 	default:
 		return fmt.Errorf("unsupported config key: %s", key)
 	}

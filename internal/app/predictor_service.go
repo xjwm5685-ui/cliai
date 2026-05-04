@@ -41,13 +41,12 @@ type predictorService struct {
 	feedbackItems []feedback.Entry
 	defaultLimit  int
 	shell         string
-	noCloud       bool
 	lastRefresh   time.Time
 }
 
 func runPredictor(args []string, stdout io.Writer, stderr io.Writer) int {
 	if len(args) == 0 || args[0] != "serve" {
-		fmt.Fprintln(stderr, "usage: cliai predictor serve [--limit 8] [--shell powershell] [--no-cloud]")
+		fmt.Fprintln(stderr, "usage: cliai predictor serve [--limit 8] [--shell powershell]")
 		return 1
 	}
 
@@ -56,12 +55,11 @@ func runPredictor(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	limit := fs.Int("limit", 8, "default number of suggestions to return")
 	shell := fs.String("shell", "powershell", "shell type")
-	noCloud := fs.Bool("no-cloud", true, "disable cloud reranking for the predictor bridge")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 1
 	}
 
-	service, err := newPredictorService(*limit, *shell, *noCloud)
+	service, err := newPredictorService(*limit, *shell)
 	if err != nil {
 		fmt.Fprintf(stderr, "start predictor service: %v\n", err)
 		return 1
@@ -108,7 +106,7 @@ func runPredictor(args []string, stdout io.Writer, stderr io.Writer) int {
 	return 0
 }
 
-func newPredictorService(limit int, shell string, noCloud bool) (*predictorService, error) {
+func newPredictorService(limit int, shell string) (*predictorService, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, err
@@ -131,7 +129,6 @@ func newPredictorService(limit int, shell string, noCloud bool) (*predictorServi
 		feedbackPath: feedbackPath,
 		defaultLimit: limit,
 		shell:        normalizeShell(shell),
-		noCloud:      noCloud,
 	}
 
 	if err := service.refreshLocked(); err != nil {
@@ -175,7 +172,6 @@ func (s *predictorService) Query(request predictorServiceRequest) ([]predict.Can
 		CWD:             cwd,
 		Shell:           s.shell,
 		Limit:           limit,
-		NoCloud:         s.noCloud,
 		Project:         projectCtx,
 		FeedbackBonuses: feedback.CommandBonuses(input, s.feedbackItems),
 	}, s.history)

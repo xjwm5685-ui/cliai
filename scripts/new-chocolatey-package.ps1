@@ -17,8 +17,8 @@ param(
   [string]$ProjectSourceUrl = "https://github.com/xjwm5685-ui/cliai",
   [string]$DocsUrl = "https://github.com/xjwm5685-ui/cliai/blob/main/README.md",
   [string]$ReleaseNotesUrl = "https://github.com/xjwm5685-ui/cliai/releases/tag/v$Version",
-  [string]$Summary = "Hybrid command prediction CLI for PowerShell",
-  [string]$Description = "cliai is a PowerShell-first command prediction CLI that combines local history, project context, user feedback and optional cloud reranking.",
+  [string]$Summary = "Local-first command prediction CLI for PowerShell",
+  [string]$Description = "cliai is a local-first command prediction CLI that combines local history, project context, user feedback, and shell integration.",
   [string]$Tags = "cliai powershell cli ai productivity command"
 )
 

@@ -9,6 +9,9 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 ### Added
 - Chocolatey package generation script and package layout for publishing `cliai` as `sanqiu-cliai`
 
+### Removed
+- OpenAI-compatible remote reranking and related configuration; `cliai` is now local-first
+
 ## [0.2.6] - 2026-05-04
 
 ### Fixed
@@ -65,7 +68,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - Self-test command, benchmarks and broader unit test coverage
 
 ### Changed
-- Cloud reranking now only reorders existing local candidates
+- Candidate ranking now remains fully local and only reorders existing local results
 - Release pipeline now prepares signed Windows binaries and checksums
 - README expanded with detailed usage, safety and release documentation
 
@@ -73,5 +76,5 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Added
 - Initial PowerShell-first hybrid command prediction CLI
-- Local history-based ranking and OpenAI-compatible cloud reranking
+- Local history-based ranking with built-in command prediction rules
 - Basic winget manifest generation and release workflow

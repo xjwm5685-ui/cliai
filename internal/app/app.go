@@ -2,20 +2,20 @@ package app
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
 
-	"github.com/sanqiu/cliai/internal/cloud"
 	"github.com/sanqiu/cliai/internal/config"
 	"github.com/sanqiu/cliai/internal/feedback"
 	"github.com/sanqiu/cliai/internal/history"
@@ -73,7 +73,6 @@ func runPredict(args []string, stdout io.Writer, stderr io.Writer) int {
 		limit       = fs.Int("limit", 5, "number of suggestions to return")
 		shell       = fs.String("shell", cfg.Shell, "shell type")
 		asJSON      = fs.Bool("json", false, "output json")
-		noCloud     = fs.Bool("no-cloud", false, "disable cloud reranking")
 		useCWD      = fs.String("cwd", cwd, "current working directory")
 		debug       = fs.Bool("debug", false, "print debug information to stderr")
 		copyTop     = fs.Bool("copy", false, "copy the selected or top command to clipboard")
@@ -134,32 +133,15 @@ func runPredict(args []string, stdout io.Writer, stderr io.Writer) int {
 		CWD:             *useCWD,
 		Shell:           normalizeShell(*shell),
 		Limit:           *limit,
-		NoCloud:         *noCloud,
 		Project:         projectCtx,
 		FeedbackBonuses: feedback.CommandBonuses(query, feedbackEntries),
 	}, allHistory)
-
-	cloudEnabled := false
-	if !*noCloud {
-		client := cloud.New(cfg.OpenAI)
-		if client.Enabled() {
-			cloudEnabled = true
-			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(max(10, cfg.OpenAI.TimeoutSeconds))*time.Second)
-			defer cancel()
-
-			ranked, rerankErr := client.Rerank(ctx, query, candidates)
-			if rerankErr == nil && len(ranked) > 0 {
-				candidates = ranked
-			}
-		}
-	}
 
 	if *debug {
 		printDebug(stderr, debugInfo{
 			Query:          query,
 			Shell:          normalizeShell(*shell),
 			CWD:            *useCWD,
-			CloudEnabled:   cloudEnabled,
 			HistoryEntries: len(allHistory),
 			FeedbackCount:  len(feedbackEntries),
 			Project:        projectCtx,
@@ -435,27 +417,25 @@ func runSelftest(args []string, stdout io.Writer, stderr io.Writer) int {
 	feedbackPath, feedbackErr := config.FeedbackPath()
 
 	type result struct {
-		Version      string          `json:"version"`
-		Commit       string          `json:"commit"`
-		BuildDate    string          `json:"build_date"`
-		ConfigOK     bool            `json:"config_ok"`
-		CachePathOK  bool            `json:"cache_path_ok"`
-		FeedbackOK   bool            `json:"feedback_path_ok"`
-		ProjectCtx   project.Context `json:"project_context"`
-		Errors       []string        `json:"errors,omitempty"`
-		CloudEnabled bool            `json:"cloud_enabled"`
-		HistoryPath  string          `json:"history_path"`
+		Version     string          `json:"version"`
+		Commit      string          `json:"commit"`
+		BuildDate   string          `json:"build_date"`
+		ConfigOK    bool            `json:"config_ok"`
+		CachePathOK bool            `json:"cache_path_ok"`
+		FeedbackOK  bool            `json:"feedback_path_ok"`
+		ProjectCtx  project.Context `json:"project_context"`
+		Errors      []string        `json:"errors,omitempty"`
+		HistoryPath string          `json:"history_path"`
 	}
 
 	out := result{
-		Version:      Version,
-		Commit:       Commit,
-		BuildDate:    BuildDate,
-		ConfigOK:     configErr == nil,
-		CachePathOK:  cacheErr == nil && strings.TrimSpace(cachePath) != "",
-		FeedbackOK:   feedbackErr == nil && strings.TrimSpace(feedbackPath) != "",
-		ProjectCtx:   projectCtx,
-		CloudEnabled: configErr == nil && cfg.OpenAI.Enabled,
+		Version:     Version,
+		Commit:      Commit,
+		BuildDate:   BuildDate,
+		ConfigOK:    configErr == nil,
+		CachePathOK: cacheErr == nil && strings.TrimSpace(cachePath) != "",
+		FeedbackOK:  feedbackErr == nil && strings.TrimSpace(feedbackPath) != "",
+		ProjectCtx:  projectCtx,
 	}
 	if configErr == nil {
 		out.HistoryPath = cfg.HistoryPath
@@ -534,7 +514,7 @@ Write-Host "cliai helper loaded. Use: csg '安装 vscode', csi 'git st', csc 'ru
 }
 
 func printHelp(w io.Writer) {
-	fmt.Fprintln(w, "cliai: PowerShell-first hybrid command prediction CLI")
+	fmt.Fprintln(w, "cliai: local-first command prediction and completion CLI")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "Commands:")
 	fmt.Fprintln(w, "  predict <query>          Predict commands from a fragment or natural language")
@@ -566,7 +546,6 @@ func normalizePredictArgs(args []string) []string {
 	}
 	flagOnly := map[string]bool{
 		"--json":         true,
-		"--no-cloud":     true,
 		"--debug":        true,
 		"--copy":         true,
 		"--command-only": true,
@@ -637,15 +616,14 @@ type debugInfo struct {
 	Query          string
 	Shell          string
 	CWD            string
-	CloudEnabled   bool
 	HistoryEntries int
 	FeedbackCount  int
 	Project        project.Context
 }
 
 func printDebug(w io.Writer, info debugInfo, candidates []predict.Candidate) {
-	fmt.Fprintf(w, "debug query=%q shell=%s cwd=%s cloud_enabled=%t history_entries=%d feedback_entries=%d project_types=%s package_manager=%s\n",
-		info.Query, info.Shell, info.CWD, info.CloudEnabled, info.HistoryEntries, info.FeedbackCount, strings.Join(info.Project.ProjectTypes, ","), info.Project.PackageManager)
+	fmt.Fprintf(w, "debug query=%q shell=%s cwd=%s history_entries=%d feedback_entries=%d project_types=%s package_manager=%s\n",
+		info.Query, info.Shell, info.CWD, info.HistoryEntries, info.FeedbackCount, strings.Join(info.Project.ProjectTypes, ","), info.Project.PackageManager)
 	for index, candidate := range candidates {
 		fmt.Fprintf(w, "debug candidate[%d] score=%.2f source=%s risk=%s command=%q reason=%q\n",
 			index, candidate.Score, candidate.Source, candidate.Risk, candidate.Command, candidate.Reason)
@@ -675,7 +653,38 @@ func chooseCandidate(candidates []predict.Candidate, stdout io.Writer, stderr io
 }
 
 func copyToClipboard(value string) error {
-	cmd := exec.Command("cmd", "/c", "clip")
+	name, args, err := clipboardCommand(runtime.GOOS, exec.LookPath)
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(name, args...)
 	cmd.Stdin = strings.NewReader(value)
 	return cmd.Run()
+}
+
+func clipboardCommand(goos string, lookPath func(file string) (string, error)) (string, []string, error) {
+	switch goos {
+	case "windows":
+		return "cmd", []string{"/c", "clip"}, nil
+	case "darwin":
+		if _, err := lookPath("pbcopy"); err != nil {
+			return "", nil, fmt.Errorf("clipboard tool not found: pbcopy")
+		}
+		return "pbcopy", nil, nil
+	default:
+		type candidate struct {
+			name string
+			args []string
+		}
+		for _, item := range []candidate{
+			{name: "wl-copy"},
+			{name: "xclip", args: []string{"-selection", "clipboard"}},
+			{name: "xsel", args: []string{"--clipboard", "--input"}},
+		} {
+			if _, err := lookPath(item.name); err == nil {
+				return item.name, item.args, nil
+			}
+		}
+		return "", nil, errors.New("clipboard tool not found: install wl-copy, xclip, or xsel")
+	}
 }
