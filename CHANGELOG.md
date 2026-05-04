@@ -9,6 +9,11 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 ### Added
 - Chocolatey package generation script and package layout for publishing `cliai` as `sanqiu-cliai`
 
+## [0.2.5] - 2026-05-04
+
+### Fixed
+- Cross-platform release tests now validate the platform-appropriate package manager template instead of assuming `winget` on Linux and macOS runners
+
 ## [0.2.4] - 2026-05-04
 
 ### Fixed

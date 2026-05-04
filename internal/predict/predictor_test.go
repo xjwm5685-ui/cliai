@@ -1,6 +1,7 @@
 package predict
 
 import (
+	"runtime"
 	"testing"
 	"time"
 
@@ -39,11 +40,16 @@ func TestPredictSupportsNaturalLanguageInstall(t *testing.T) {
 		found[item.Command] = true
 	}
 
-	if !found["winget install vscode"] {
-		t.Fatalf("expected winget install template, got %#v", results)
+	expectedSearch, expectedInstall, _, _, _ := packageManagerCommands("vscode")
+	if !found[expectedInstall] {
+		t.Fatalf("expected install template %q, got %#v", expectedInstall, results)
 	}
-	if !found["winget search vscode"] {
-		t.Fatalf("expected winget search template, got %#v", results)
+	if !found[expectedSearch] {
+		t.Fatalf("expected search template %q, got %#v", expectedSearch, results)
+	}
+
+	if runtime.GOOS == "windows" && !found["winget install vscode"] {
+		t.Fatalf("expected windows install template, got %#v", results)
 	}
 }
 
