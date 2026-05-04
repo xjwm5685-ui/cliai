@@ -1,0 +1,13 @@
+Package: cliai
+Version: 0.2.9
+Architecture: amd64
+Maintainer: Sanqiu <noreply@users.noreply.github.com>
+Section: utils
+Priority: optional
+Filename: pool/main/c/cliai/cliai_0.2.9_amd64.deb
+Size: 965580
+MD5sum: 1ebd9c5bf1fbb9bcede6c5d52d1a78ec
+SHA256: ba313d5ba7207046fb310f3c3b371c657808cae32c8b48b4a2f46d775db14d0b
+Description: Hybrid command prediction CLI with local history, project context and optional PowerShell inline prediction.
+ cliai provides command prediction with local history, project context,
+ feedback learning and optional PowerShell inline prediction support.

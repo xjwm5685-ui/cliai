@@ -1,0 +1,18 @@
+Origin: Sanqiu
+Label: cliai
+Suite: stable
+Codename: stable
+Architectures: amd64 arm64
+Components: main
+Description: cliai apt repository
+Date: Mon, 04 May 2026 13:02:50 +0000
+MD5Sum:
+ 45c5b507a945e7edaea4ab9987b6bb47              578 main/binary-amd64/Packages
+ 03f012b3e9a0817685aefd60ccbf0119              373 main/binary-amd64/Packages.gz
+ 84c2db6d0662b81e044ab1f7f1b2aa6d              578 main/binary-arm64/Packages
+ 08ba117d8b722f5400e3290c7cee9c0c              375 main/binary-arm64/Packages.gz
+SHA256:
+ df26714ba7997e84276d13515e03057c50bdffd5737405b438e6f4bfd14c93d0              578 main/binary-amd64/Packages
+ e3f0074f88eca835be5ec44ab3d59278871f4aa68c21919c8e2c6c4501f0c7a6              373 main/binary-amd64/Packages.gz
+ e16e51cd6990a5e0c91c93f1f2e34bf1ae233e2169249e04befdb5371c38f1e6              578 main/binary-arm64/Packages
+ 7ca8210ce4e5df1c542a984dc69bbb4ca7dfd353a959d8cbe1f32d8a11f1fedc              375 main/binary-arm64/Packages.gz
