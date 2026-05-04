@@ -107,6 +107,132 @@ function Get-CliaiWindowsAssetNames {
   }
 }
 
+function Set-MarkedBlock {
+  param(
+    [Parameter(Mandatory = $true)]
+    [AllowEmptyString()]
+    [string]$Content,
+
+    [Parameter(Mandatory = $true)]
+    [string]$StartMarker,
+
+    [Parameter(Mandatory = $true)]
+    [string]$EndMarker,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Block
+  )
+
+  $pattern = "(?s)\r?\n?$([Regex]::Escape($StartMarker)).*?$([Regex]::Escape($EndMarker))\r?\n?"
+  $replacement = "`r`n$StartMarker`r`n$Block`r`n$EndMarker`r`n"
+  if ($Content -match $pattern) {
+    return ([Regex]::Replace($Content, $pattern, $replacement)).TrimStart("`r", "`n")
+  }
+
+  if ([string]::IsNullOrWhiteSpace($Content)) {
+    return "$StartMarker`r`n$Block`r`n$EndMarker`r`n"
+  }
+
+  return ($Content.TrimEnd() + $replacement)
+}
+
+function Resolve-InstalledModuleVersion {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$InstallRoot,
+
+    [string]$PreferredVersion
+  )
+
+  if (-not [string]::IsNullOrWhiteSpace($PreferredVersion)) {
+    return $PreferredVersion.Trim().TrimStart("v")
+  }
+
+  $moduleRoot = Join-Path $InstallRoot "modules\CliaiPredictor"
+  if (Test-Path $moduleRoot) {
+    $detected = Get-ChildItem -Path $moduleRoot -Directory -ErrorAction SilentlyContinue |
+      Sort-Object Name -Descending |
+      Select-Object -First 1 -ExpandProperty Name
+    if ($detected) {
+      return $detected
+    }
+  }
+
+  return "dev"
+}
+
+function Install-CliaiPowerShellIntegration {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$InstallRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExePath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$PredictionSource,
+
+    [string]$ModuleVersion
+  )
+
+  $resolvedModuleVersion = Resolve-InstalledModuleVersion -InstallRoot $InstallRoot -PreferredVersion $ModuleVersion
+  $moduleSourceRoot = Join-Path $InstallRoot "modules\CliaiPredictor\$resolvedModuleVersion"
+  if (-not (Test-Path (Join-Path $moduleSourceRoot "CliaiPredictor.psd1"))) {
+    throw "Unable to find an installable CliaiPredictor module in the release package."
+  }
+
+  $profileDir = Join-Path $HOME "Documents\PowerShell"
+  $profilePath = Join-Path $profileDir "Profile.ps1"
+  if (-not (Test-Path $profileDir)) {
+    New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
+  }
+
+  $moduleVersionRoot = Join-Path $HOME "Documents\PowerShell\Modules\CliaiPredictor\$resolvedModuleVersion"
+  New-Item -ItemType Directory -Path $moduleVersionRoot -Force | Out-Null
+
+  foreach ($fileName in @("CliaiPredictor.dll", "CliaiPredictor.deps.json", "CliaiPredictor.psd1")) {
+    $sourcePath = Join-Path $moduleSourceRoot $fileName
+    if (-not (Test-Path $sourcePath)) {
+      throw "Missing module file: $sourcePath"
+    }
+    Copy-Item -Path $sourcePath -Destination (Join-Path $moduleVersionRoot $fileName) -Force
+  }
+
+  $snippet = & $ExePath shell init powershell
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed to run '$ExePath shell init powershell'."
+  }
+  $snippet = ($snippet -join "`r`n")
+
+  $escapedExe = $ExePath.Replace("'", "''")
+  $helperStart = "# >>> cliai helpers >>>"
+  $helperEnd = "# <<< cliai helpers <<<"
+  $predictorStart = "# >>> cliai predictor >>>"
+  $predictorEnd = "# <<< cliai predictor <<<"
+  $predictorSnippet = @"
+if (`$PSVersionTable.PSVersion -ge [Version]'7.2.0') {
+  `$env:CLIAI_EXE = '$escapedExe'
+  Import-Module CliaiPredictor -Force -ErrorAction SilentlyContinue
+  if (Get-Command Set-PSReadLineOption -ErrorAction SilentlyContinue) {
+    Set-PSReadLineOption -PredictionSource $PredictionSource
+    Set-PSReadLineOption -PredictionViewStyle InlineView
+  }
+  if (Get-Command Set-PSReadLineKeyHandler -ErrorAction SilentlyContinue) {
+    Set-PSReadLineKeyHandler -Chord Alt+RightArrow -Function AcceptSuggestion
+    Set-PSReadLineKeyHandler -Chord Alt+Shift+RightArrow -Function AcceptNextSuggestionWord
+  }
+}
+"@
+
+  $current = ""
+  if (Test-Path $profilePath) {
+    $current = Get-Content $profilePath -Raw
+  }
+  $updated = Set-MarkedBlock -Content $current -StartMarker $helperStart -EndMarker $helperEnd -Block $snippet
+  $updated = Set-MarkedBlock -Content $updated -StartMarker $predictorStart -EndMarker $predictorEnd -Block $predictorSnippet
+  Set-Content -Path $profilePath -Value $updated -Encoding utf8
+}
+
 function Test-UserPathContains {
   param(
     [Parameter(Mandatory = $true)]
@@ -220,12 +346,8 @@ function Install-Cliai {
     Copy-Item -Path (Join-Path $extractRoot "*") -Destination $TargetInstallDir -Recurse -Force
 
     $exePath = Join-Path $TargetInstallDir "cliai.exe"
-    $profileInstaller = Join-Path $TargetInstallDir "scripts\install-powershell.ps1"
     if (-not (Test-Path $exePath)) {
       throw "Installed archive did not contain cliai.exe."
-    }
-    if (-not (Test-Path $profileInstaller)) {
-      throw "Installed archive did not contain scripts\install-powershell.ps1."
     }
 
     $pathUpdated = $false
@@ -234,10 +356,7 @@ function Install-Cliai {
     }
 
     if (-not $DoSkipShellIntegration) {
-      & $profileInstaller -ExeName $exePath -ModuleVersion $resolvedVersion -PredictionSource $RequestedPredictionSource
-      if ($LASTEXITCODE -ne 0) {
-        throw "PowerShell integration step failed."
-      }
+      Install-CliaiPowerShellIntegration -InstallRoot $TargetInstallDir -ExePath $exePath -PredictionSource $RequestedPredictionSource -ModuleVersion $resolvedVersion
     }
 
     Write-Host ""
