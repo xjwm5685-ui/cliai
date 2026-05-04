@@ -62,7 +62,7 @@ cliai predict --interactive "进入 src"
 | `predict` / `selftest` / `config` | 已支持 | 已支持 | 已支持 |
 | GitHub Release 产物 | zip | tar.gz | tar.gz |
 | 一键系统安装脚本 | `install-powershell.ps1` | `install-unix.sh` | `install-unix.sh` |
-| PowerShell 实时灰字预测 | 已支持 | 已支持，需本机安装 `pwsh` | 已支持，需本机安装 `pwsh` |
+| 实时灰字预测 | 已支持 | `zsh` 原生支持，`bash` 支持快捷接受，`pwsh` 也可用 | `zsh` 原生支持，`bash` 支持快捷接受，`pwsh` 也可用 |
 | 原生包管理分发 | winget / Chocolatey | 已补 `.deb` 与 apt repo 脚本 | 已补 Homebrew Formula 脚本 |
 
 ## 当前边界
@@ -70,7 +70,9 @@ cliai predict --interactive "进入 src"
 虽然这版已经比初版完整很多，但仍建议明确这些边界：
 
 - CLI 核心已支持 `powershell`、`bash`、`zsh`、`fish`
-- 实时灰字预测当前依赖 PowerShell `7.2+` 与 `PSReadLine`
+- Windows 下实时灰字预测依赖 PowerShell `7.2+` 与 `PSReadLine`
+- Linux/macOS/WSL2 推荐使用 `zsh` 获得原生灰字预测
+- `bash` 当前提供接近原生的预测接受快捷键，不是完整的灰字渲染
 - 程序不会直接执行候选命令，只负责建议、选择、复制和学习
 - 项目上下文识别目前是轻量级静态检测，不是完整语义代理
 - 历史学习主要来自“命令出现次数”和“用户明确接受的候选”
@@ -173,6 +175,7 @@ Linux / macOS：
 
 ```bash
 go build -o ./bin/cliai .
+./bin/cliai shell install zsh
 ```
 
 如果你想全局使用，把生成的二进制放到 `PATH` 中。
@@ -214,7 +217,24 @@ cd <extract-dir>
 ./scripts/install-unix.sh
 ```
 
-如果系统里已安装 `pwsh`，安装脚本会提示你继续执行：
+如果你使用 `zsh`，现在可以直接启用原生灰字预测：
+
+```bash
+cliai shell install zsh
+```
+
+如果你使用 `bash`，可以启用快捷接受预测：
+
+```bash
+cliai shell install bash
+```
+
+默认快捷键：
+
+- `Alt+RightArrow`：接受整条预测
+- `Alt+Shift+RightArrow`：按词接受预测
+
+如果系统里已安装 `pwsh`，也可以继续执行：
 
 ```bash
 cliai shell install powershell

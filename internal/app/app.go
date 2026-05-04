@@ -388,22 +388,34 @@ func runFeedback(args []string, stdout io.Writer, stderr io.Writer) int {
 
 func runShell(args []string, stdout io.Writer, stderr io.Writer) int {
 	if len(args) < 2 {
-		fmt.Fprintln(stderr, "usage: cliai shell [init|install] powershell")
+		printShellUsage(stderr)
 		return 1
 	}
-	if args[1] != "powershell" {
-		fmt.Fprintln(stderr, "only powershell is supported in v0.1.0")
+
+	targetShell := strings.ToLower(strings.TrimSpace(args[1]))
+	switch targetShell {
+	case "powershell", "bash", "zsh":
+	default:
+		printShellUsage(stderr)
 		return 1
 	}
 
 	switch args[0] {
 	case "init":
-		fmt.Fprintln(stdout, powershellSnippet())
+		snippet, err := shellInitSnippet(targetShell)
+		if err != nil {
+			fmt.Fprintln(stderr, err.Error())
+			return 1
+		}
+		fmt.Fprintln(stdout, snippet)
 		return 0
 	case "install":
-		return runShellInstallPowerShell(stdout, stderr)
+		if targetShell == "powershell" {
+			return runShellInstallPowerShell(stdout, stderr)
+		}
+		return runShellInstallPOSIX(targetShell, stdout, stderr)
 	default:
-		fmt.Fprintln(stderr, "usage: cliai shell [init|install] powershell")
+		printShellUsage(stderr)
 		return 1
 	}
 }
@@ -532,10 +544,14 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "  config set <key> <value> Update config values")
 	fmt.Fprintln(w, "  feedback show            Show accepted suggestions")
 	fmt.Fprintln(w, "  feedback accept          Record a selected suggestion")
-	fmt.Fprintln(w, "  shell init powershell    Print the PowerShell helper snippet")
-	fmt.Fprintln(w, "  shell install powershell Install the PowerShell predictor and profile integration")
+	fmt.Fprintln(w, "  shell init <shell>       Print the shell integration snippet for powershell, bash, or zsh")
+	fmt.Fprintln(w, "  shell install <shell>    Install the shell integration into your profile")
 	fmt.Fprintln(w, "  selftest                 Run local smoke checks")
 	fmt.Fprintln(w, "  version                  Print version/build metadata")
+}
+
+func printShellUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: cliai shell [init|install] [powershell|bash|zsh]")
 }
 
 func normalizePredictArgs(args []string) []string {

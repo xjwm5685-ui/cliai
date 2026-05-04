@@ -32,7 +32,7 @@ The goal is not just prefix completion, but high-quality command suggestions for
 | `predict` / `selftest` / `config` | Supported | Supported | Supported |
 | GitHub Release package | zip | tar.gz | tar.gz |
 | Install helper | `install-powershell.ps1` | `install-unix.sh` | `install-unix.sh` |
-| PowerShell inline prediction | Supported | Supported when `pwsh` is installed | Supported when `pwsh` is installed |
+| Real-time inline prediction | Supported | Native in `zsh`, quick-accept in `bash`, also available via `pwsh` | Native in `zsh`, quick-accept in `bash`, also available via `pwsh` |
 | Native package channel | winget / Chocolatey | `.deb` and apt repo scripts included | Homebrew formula script included |
 
 ## Quick Start
@@ -52,6 +52,7 @@ Linux / macOS:
 go build -o ./bin/cliai .
 ./bin/cliai history import
 ./bin/cliai predict "install vscode"
+./bin/cliai shell install zsh
 ```
 
 ## Installation
@@ -69,7 +70,19 @@ From GitHub Release:
 - Windows: download `cliai_Windows_x86_64.zip` or `cliai_Windows_ARM64.zip`, then run `.\cliai.exe shell install powershell`
 - Linux/macOS: download the matching `cliai_Linux_*.tar.gz` or `cliai_macOS_*.tar.gz`, extract it, then run `./scripts/install-unix.sh`
 
-If `pwsh` is available on Linux/macOS, `install-unix.sh` will remind you to run:
+If you use `zsh`, enable native grey inline suggestions with:
+
+```bash
+cliai shell install zsh
+```
+
+If you use `bash`, enable the quick-accept bindings with:
+
+```bash
+cliai shell install bash
+```
+
+If `pwsh` is available on Linux/macOS, `install-unix.sh` will also remind you to run:
 
 ```bash
 cliai shell install powershell
@@ -117,9 +130,13 @@ If you require apt signing locally, run:
 ./scripts/release-local.sh 0.2.1 --require-apt-signature
 ```
 
-## Real-Time PowerShell Predictions
+## Real-Time Shell Predictions
 
-`cliai` supports real-time grey inline predictions in PowerShell through the binary predictor module `CliaiPredictor`.
+`cliai` supports real-time command prediction in multiple shells:
+
+- PowerShell uses the `CliaiPredictor` binary predictor module
+- zsh uses native inline grey ghost text
+- bash provides native keybindings to accept the current top prediction quickly
 
 Requirements:
 
@@ -150,6 +167,18 @@ Import-Module CliaiPredictor
 (Get-PSSubsystem -Kind CommandPredictor).Implementations |
   Select-Object Id, Name, Description
 ```
+
+For Linux, macOS, or WSL2:
+
+```bash
+cliai shell install zsh
+```
+
+Recommended shell behavior:
+
+- `zsh`: native grey inline suggestion while you type
+- `bash`: `Alt+RightArrow` accepts the top prediction, `Alt+Shift+RightArrow` accepts one word
+- `pwsh`: PowerShell plugin-based inline prediction
 
 ## Main Commands
 
