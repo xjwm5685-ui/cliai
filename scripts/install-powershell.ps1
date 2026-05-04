@@ -1,7 +1,7 @@
 param(
   [string]$ExeName = "cliai",
   [switch]$SkipPredictorBuild,
-  [string]$ModuleVersion = "0.2.1",
+  [string]$ModuleVersion = "",
   [ValidateSet("Plugin", "HistoryAndPlugin")]
   [string]$PredictionSource = "Plugin"
 )
@@ -50,6 +50,49 @@ $resolvedExe = try {
 }
 $resolvedExe = [IO.Path]::GetFullPath($resolvedExe)
 $exeDir = Split-Path -Parent $resolvedExe
+
+function Resolve-ModuleVersion {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$PreferredVersion,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExePath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExeDirectory
+  )
+
+  $version = $PreferredVersion.Trim()
+  if ($version) {
+    return $version.TrimStart("v")
+  }
+
+  $bundledModuleRoot = Join-Path $ExeDirectory "modules\CliaiPredictor"
+  if (Test-Path $bundledModuleRoot) {
+    $bundledVersion = Get-ChildItem -Path $bundledModuleRoot -Directory -ErrorAction SilentlyContinue |
+      Sort-Object Name -Descending |
+      Select-Object -First 1 -ExpandProperty Name
+    if ($bundledVersion) {
+      return $bundledVersion
+    }
+  }
+
+  try {
+    $versionOutput = & $ExePath version 2>$null
+    if ($LASTEXITCODE -eq 0) {
+      $match = [regex]::Match(($versionOutput -join " "), "v?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]+)?)")
+      if ($match.Success) {
+        return $match.Groups[1].Value
+      }
+    }
+  } catch {
+  }
+
+  return "dev"
+}
+
+$ModuleVersion = Resolve-ModuleVersion -PreferredVersion $ModuleVersion -ExePath $resolvedExe -ExeDirectory $exeDir
 
 $snippet = & $resolvedExe shell init powershell
 if ($LASTEXITCODE -ne 0) {

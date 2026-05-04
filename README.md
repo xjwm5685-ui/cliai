@@ -181,6 +181,21 @@ go build -o ./bin/cliai .
 
 Windows：
 
+推荐一键安装：
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.ps1 | iex
+```
+
+说明：
+
+- 该脚本会自动识别 `amd64` / `arm64`
+- 自动下载最新 Windows Release zip 与 `.sha256`
+- 自动校验校验和、解压到用户目录并写入用户 `PATH`
+- 自动接入 PowerShell Profile 与实时灰字预测
+
+也可以手动下载安装包：
+
 1. 下载 `cliai_Windows_x86_64.zip` 或 `cliai_Windows_ARM64.zip`
 2. 解压后运行：
 

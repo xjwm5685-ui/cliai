@@ -56,6 +56,14 @@ go build -o ./bin/cliai .
 
 ## Installation
 
+Windows one-liner:
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.ps1 | iex
+```
+
+The bootstrap installer detects `amd64` vs `arm64`, downloads the latest Windows release zip and `.sha256`, verifies the checksum, adds `cliai` to the user `PATH`, and enables the PowerShell predictor integration.
+
 From GitHub Release:
 
 - Windows: download `cliai_Windows_x86_64.zip` or `cliai_Windows_ARM64.zip`, then run `.\cliai.exe shell install powershell`
