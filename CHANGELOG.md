@@ -9,6 +9,12 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 ### Added
 - Chocolatey package generation script and package layout for publishing `cliai` as `sanqiu-cliai`
 
+## [0.2.4] - 2026-05-04
+
+### Fixed
+- Cross-platform tests now pin the shell explicitly where Windows-specific install templates are expected, avoiding Linux/macOS failures caused by platform-default shell selection
+- `scripts/stage-predictor-module.ps1` now uses ASCII-only status and error messages so the Windows release workflow can parse the script reliably on hosted runners
+
 ## [0.2.3] - 2026-05-04
 
 ### Fixed

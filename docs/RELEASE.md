@@ -65,20 +65,20 @@ Linux/macOS 需要 apt 签名时：
 Windows 无签名本地发布：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.3
+powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.4
 ```
 
 Windows 需要签名时：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.3 -RequireSignature
+powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.4 -RequireSignature
 ```
 
 Linux/macOS 本地发布：
 
 ```bash
 ./scripts/check-release-env.sh
-./scripts/release-local.sh 0.2.3
+./scripts/release-local.sh 0.2.4
 ```
 
 说明：
@@ -90,8 +90,8 @@ Linux/macOS 本地发布：
 ## 5. 推送正式 tag
 
 ```powershell
-git tag v0.2.3
-git push origin v0.2.3
+git tag v0.2.4
+git push origin v0.2.4
 ```
 
 Release workflow 会：

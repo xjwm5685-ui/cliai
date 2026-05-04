@@ -42,18 +42,18 @@ Linux/macOS 需要 apt 签名时：
 建议本地再补一轮产物预演：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.3
+powershell -ExecutionPolicy Bypass -File .\scripts\release-local.ps1 -Version 0.2.4
 ```
 
 ```bash
-./scripts/release-local.sh 0.2.3
+./scripts/release-local.sh 0.2.4
 ```
 
 ## 打 tag
 
 ```powershell
-git tag v0.2.3
-git push origin v0.2.3
+git tag v0.2.4
+git push origin v0.2.4
 ```
 
 ## Release 产物核对

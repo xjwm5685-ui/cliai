@@ -30,6 +30,7 @@ func TestPredictSupportsNaturalLanguageInstall(t *testing.T) {
 	engine := New()
 	results := engine.Predict(Request{
 		Query: "安装 vscode",
+		Shell: "powershell",
 		Limit: 5,
 	}, nil)
 
