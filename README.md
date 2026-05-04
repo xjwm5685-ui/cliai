@@ -262,22 +262,27 @@ brew install <your-tap>/cliai
 - 它会根据 GitHub Release 的 macOS/Linux tar.gz 资产生成 Homebrew Formula
 - 仍需要单独维护并发布一个 Homebrew tap 仓库
 
-### 未来通过 apt 安装
+### 通过 apt 安装
 
-预期安装命令：
+先写入软件源：
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.sh | bash
+```
+
+然后安装：
+
+```bash
+sudo apt update
 sudo apt install cliai
 ```
 
 说明：
 
-- 当前仓库已补 `scripts/new-deb-package.sh`
-- 它可以生成 Debian 包 staging 目录，并在 Linux 上调用 `dpkg-deb` 构建 `.deb`
-- 当前仓库也已补 `scripts/new-apt-repo.sh`，可生成 `pool/`、`dists/`、`Packages.gz`、`Release`
-- 当前仓库已补 `scripts/sign-apt-repo.sh`，可生成 `Release.gpg` 和 `InRelease`
-- 当前 Release workflow 已自动构建 `.deb`、apt repo 元数据、可选签名、公钥和 apt 校验
-- 还缺真实公开的 apt 源托管地址，以及最终面向用户的软件源配置入口
+- 安装脚本会把 `cliai` 的 apt 源写入 `/etc/apt/sources.list.d/cliai.list`
+- 当前 apt 仓库托管在 GitHub 的 `apt-repo` 分支上
+- 如果未来配置了 apt GPG key，安装脚本会自动安装公钥并使用 `signed-by`
+- 如果暂时没有公开签名公钥，脚本会回退到 `trusted=yes` 方式，保证 `apt update` 和 `apt install cliai` 可直接工作
 
 ## 命令总览
 

@@ -81,16 +81,27 @@ Planned Homebrew install command:
 brew install <your-tap>/cliai
 ```
 
-Planned apt install command:
+APT install:
+
+Bootstrap the apt source:
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.sh | bash
+```
+
+Then install:
+
+```bash
+sudo apt update
 sudo apt install cliai
 ```
 
 Current apt status:
 
-- `release.yml` already builds `.deb` packages, apt repository metadata, optional signatures, optional public key export, and apt asset validation
-- end-user `apt install cliai` still depends on publishing the repository at a real public URL
+- the release workflow already builds `.deb` packages, apt repository metadata, optional signatures, optional public key export, and apt asset validation
+- the apt repository is published from the `apt-repo` branch on GitHub
+- if a public apt signing key is available, the bootstrap script installs it automatically
+- otherwise the bootstrap script falls back to `trusted=yes` so `apt update` and `apt install cliai` still work
 
 ## Local Release Builds
 

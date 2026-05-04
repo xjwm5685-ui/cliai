@@ -207,6 +207,38 @@ jobs:
             --deb "./dist/deb/arm64/cliai_${version}_arm64.deb" \
             "${extra_args[@]}"
 
+      - name: Publish apt repository branch
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          publish_dir="$(mktemp -d)"
+          trap 'rm -rf "${publish_dir}"' EXIT
+
+          cp -R "./dist/apt-repo/${version}/." "${publish_dir}/"
+          if [[ -f "./dist/cliai-archive-keyring.asc" ]]; then
+            cp "./dist/cliai-archive-keyring.asc" "${publish_dir}/cliai-archive-keyring.asc"
+          fi
+
+          cat > "${publish_dir}/README.md" <<EOF
+          # cliai apt repository
+
+          This branch is published automatically from ${GITHUB_REF_NAME}.
+          Repository root: https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/apt-repo
+          EOF
+
+          pushd "${publish_dir}" >/dev/null
+          git init -b apt-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Publish apt repo for ${GITHUB_REF_NAME}"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin apt-repo
+          popd >/dev/null
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v3
         with:
