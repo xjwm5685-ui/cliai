@@ -1,6 +1,6 @@
 # cliai
 
-`cliai` 是一个跨平台、本地优先的命令预测与补全工具，运行在 Windows、Linux、macOS，并为 PowerShell、zsh、bash 提供不同程度的实时预测体验。
+`cliai` 是一个跨平台、本地优先的命令预测与补全工具，运行在 Windows、Linux、macOS，并为 PowerShell、zsh、bash 提供不同程度的补全体验。
 
 它不是命令执行器，而是“更懂当前终端上下文”的命令建议器：
 
@@ -158,12 +158,11 @@ Linux / macOS：
 - 下载对应的 `cliai_Linux_*.tar.gz` 或 `cliai_macOS_*.tar.gz`
 - 解压后执行 `./scripts/install-unix.sh`
 
-### 包管理渠道
+### 分发状态
 
-- winget 包名：`Sanqiu.Cliai`
-- Chocolatey 包名：`sanqiu-cliai`
-- apt 包名：`cliai`
-- Homebrew 仍需单独维护 tap
+- 当前可用：GitHub Release、Windows 安装脚本、Linux apt 包 `cliai`
+- 待公开分发：winget `Sanqiu.Cliai`、Chocolatey `sanqiu-cliai`
+- 未提供现成 Homebrew tap：如需 `brew install` 仍需单独维护 tap
 
 ## 命令总览
 

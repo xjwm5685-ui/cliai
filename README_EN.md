@@ -24,7 +24,7 @@ Project links:
 - Feedback learning from accepted suggestions
 - Risk labels: `safe`, `caution`, `danger`
 - Table, JSON, command-only, interactive, and clipboard-friendly output modes
-- Real-time shell integration for PowerShell, zsh, and bash
+- Shell integration for PowerShell, zsh, and bash, with native inline prediction in PowerShell and zsh
 
 ## Support Matrix
 
@@ -124,12 +124,11 @@ cliai shell install powershell
 - Windows: download `cliai_Windows_x86_64.zip` or `cliai_Windows_ARM64.zip`, then run `.\cliai.exe shell install powershell`
 - Linux/macOS: download the matching `cliai_Linux_*.tar.gz` or `cliai_macOS_*.tar.gz`, extract it, then run `./scripts/install-unix.sh`
 
-### Package channels
+### Distribution Status
 
-- winget package: `Sanqiu.Cliai`
-- Chocolatey package: `sanqiu-cliai`
-- apt package: `cliai`
-- Homebrew still requires a separate tap
+- Available now: GitHub Release assets, the Windows bootstrap installer, and the Linux apt package `cliai`
+- Not publicly distributed yet: winget `Sanqiu.Cliai` and Chocolatey `sanqiu-cliai`
+- Homebrew still requires a separately maintained tap before `brew install` is available
 
 ## Main Commands
 
