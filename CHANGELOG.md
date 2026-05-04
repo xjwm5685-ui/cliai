@@ -9,6 +9,11 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 ### Added
 - Chocolatey package generation script and package layout for publishing `cliai` as `sanqiu-cliai`
 
+## [0.2.6] - 2026-05-04
+
+### Fixed
+- Release workflow now invokes Debian and apt helper scripts through `bash`, so Linux runners no longer depend on the executable bit being preserved in git metadata
+
 ## [0.2.5] - 2026-05-04
 
 ### Fixed
