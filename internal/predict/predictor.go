@@ -460,15 +460,42 @@ func projectCommandBonus(command string, activeTypes []string) float64 {
 }
 
 func riskLevel(command string) string {
-	norm := normalize(command)
+	norm := " " + normalize(command) + " "
 	switch {
-	case strings.Contains(norm, "rm ") || strings.Contains(norm, "del ") || strings.Contains(norm, "format ") || strings.Contains(norm, "remove-item") || strings.Contains(norm, "shutdown ") || strings.Contains(norm, "stop-computer"):
+	case containsAnyPhrase(norm,
+		" rm ",
+		" del ",
+		" format ",
+		" remove item ",
+		" shutdown ",
+		" stop computer ",
+	):
 		return "danger"
-	case strings.Contains(norm, "uninstall") || strings.Contains(norm, "upgrade") || strings.Contains(norm, "checkout -b") || strings.Contains(norm, "docker compose up"):
+	case containsAnyPhrase(norm,
+		" install ",
+		" uninstall ",
+		" upgrade ",
+		" checkout b ",
+		" switch c ",
+		" docker compose up ",
+		" start process ",
+		" npm run dev ",
+		" pnpm dev ",
+		" yarn dev ",
+	) || strings.HasPrefix(strings.TrimSpace(norm), "go run "):
 		return "caution"
 	default:
 		return "safe"
 	}
+}
+
+func containsAnyPhrase(in string, phrases ...string) bool {
+	for _, phrase := range phrases {
+		if strings.Contains(in, phrase) {
+			return true
+		}
+	}
+	return false
 }
 
 func packageManagerCommands(arg string) (search string, install string, upgradeAll string, uninstall string, upgrade string) {

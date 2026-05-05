@@ -45,6 +45,8 @@ func runShellInstallPOSIX(shell string, stdout io.Writer, stderr io.Writer) int 
 func shellInitSnippet(shell string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(shell)) {
 	case "powershell":
+		fallthrough
+	case "powershell-helpers":
 		return powershellSnippet(), nil
 	case "bash":
 		return bashSnippet(), nil

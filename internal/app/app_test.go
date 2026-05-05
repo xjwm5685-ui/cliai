@@ -111,6 +111,9 @@ func TestPrintHelpUsesLocalFirstPositioning(t *testing.T) {
 	if !strings.Contains(output, "shell init <shell>") || !strings.Contains(output, "powershell, bash, or zsh") {
 		t.Fatalf("expected shell help text for powershell, bash, and zsh, got %q", output)
 	}
+	if !strings.Contains(output, "shell install powershell-helpers") {
+		t.Fatalf("expected explicit powershell helper install help text, got %q", output)
+	}
 }
 
 func TestRunPredictorUsageDoesNotMentionRemovedNoCloudFlag(t *testing.T) {
@@ -126,5 +129,18 @@ func TestRunPredictorUsageDoesNotMentionRemovedNoCloudFlag(t *testing.T) {
 	}
 	if strings.Contains(output, "--no-cloud") {
 		t.Fatalf("did not expect removed --no-cloud flag in predictor usage: %q", output)
+	}
+}
+
+func TestRunShellInitPowerShellHelpersPrintsAliasSnippet(t *testing.T) {
+	var stdout bytes.Buffer
+	code := runShell([]string{"init", "powershell-helpers"}, &stdout, &bytes.Buffer{})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "Set-Alias csg") || !strings.Contains(output, "Set-Alias csi") || !strings.Contains(output, "Set-Alias csc") {
+		t.Fatalf("expected helper aliases in snippet, got %q", output)
 	}
 }

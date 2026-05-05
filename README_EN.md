@@ -142,6 +142,8 @@ cliai feedback show
 cliai feedback accept --query <query> <command>
 cliai shell init <powershell|bash|zsh>
 cliai shell install <powershell|bash|zsh>
+cliai shell init powershell-helpers
+cliai shell install powershell-helpers
 cliai selftest
 cliai version
 ```
@@ -253,6 +255,33 @@ Supported environment variables:
 
 - `CLIAI_SHELL`
 - `CLIAI_HISTORY_PATH`
+
+## `shell`
+
+Usage:
+
+```powershell
+cliai shell init powershell
+cliai shell install powershell
+cliai shell init powershell-helpers
+cliai shell install powershell-helpers
+cliai shell init zsh
+cliai shell install zsh
+cliai shell init bash
+cliai shell install bash
+```
+
+If you only want the PowerShell helper aliases `csg` / `csi` / `csc` without the full predictor integration, you can install them separately:
+
+```powershell
+cliai shell install powershell-helpers
+```
+
+PowerShell helper aliases:
+
+- `csg`: standard suggestions
+- `csi`: interactive selection with clipboard copy
+- `csc`: print only the top command
 
 ## Real-Time Shell Predictions
 

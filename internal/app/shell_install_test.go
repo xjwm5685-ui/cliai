@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -51,5 +52,28 @@ func TestFindInstallPowerShellScriptFallsBackToParentScriptsDir(t *testing.T) {
 	got := findInstallPowerShellScript(exePath)
 	if got != scriptPath {
 		t.Fatalf("expected %q, got %q", scriptPath, got)
+	}
+}
+
+func TestInstallPowerShellHelpersWritesMarkedBlock(t *testing.T) {
+	profilePath := filepath.Join(t.TempDir(), "Documents", "PowerShell", "Profile.ps1")
+
+	if err := installPowerShellHelpers(profilePath); err != nil {
+		t.Fatalf("installPowerShellHelpers returned error: %v", err)
+	}
+	if err := installPowerShellHelpers(profilePath); err != nil {
+		t.Fatalf("installPowerShellHelpers second run returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(profilePath)
+	if err != nil {
+		t.Fatalf("read profile: %v", err)
+	}
+	content := string(data)
+	if strings.Count(content, powerShellHelpersStartMarker) != 1 {
+		t.Fatalf("expected one helper block marker, got %q", content)
+	}
+	if !strings.Contains(content, "Set-Alias csg") || !strings.Contains(content, "Set-Alias csi") || !strings.Contains(content, "Set-Alias csc") {
+		t.Fatalf("expected helper aliases in profile, got %q", content)
 	}
 }

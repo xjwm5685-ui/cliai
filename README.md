@@ -176,6 +176,8 @@ cliai feedback show
 cliai feedback accept --query <query> <command>
 cliai shell init <powershell|bash|zsh>
 cliai shell install <powershell|bash|zsh>
+cliai shell init powershell-helpers
+cliai shell install powershell-helpers
 cliai selftest
 cliai version
 ```
@@ -319,10 +321,18 @@ cliai config set local.max_history 5000
 ```powershell
 cliai shell init powershell
 cliai shell install powershell
+cliai shell init powershell-helpers
+cliai shell install powershell-helpers
 cliai shell init zsh
 cliai shell install zsh
 cliai shell init bash
 cliai shell install bash
+```
+
+如果你只想安装 `csg` / `csi` / `csc` 这些 PowerShell helper，而不处理完整预测器集成，也可以单独执行：
+
+```powershell
+cliai shell install powershell-helpers
 ```
 
 PowerShell helper 别名：

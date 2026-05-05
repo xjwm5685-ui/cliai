@@ -376,7 +376,11 @@ func runShell(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	targetShell := strings.ToLower(strings.TrimSpace(args[1]))
 	switch targetShell {
-	case "powershell", "bash", "zsh":
+	case "pwsh":
+		targetShell = "powershell"
+	}
+	switch targetShell {
+	case "powershell", "powershell-helpers", "bash", "zsh":
 	default:
 		printShellUsage(stderr)
 		return 1
@@ -394,6 +398,9 @@ func runShell(args []string, stdout io.Writer, stderr io.Writer) int {
 	case "install":
 		if targetShell == "powershell" {
 			return runShellInstallPowerShell(stdout, stderr)
+		}
+		if targetShell == "powershell-helpers" {
+			return runShellInstallPowerShellHelpers(stdout, stderr)
 		}
 		return runShellInstallPOSIX(targetShell, stdout, stderr)
 	default:
@@ -526,12 +533,13 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "  feedback accept          Record a selected suggestion")
 	fmt.Fprintln(w, "  shell init <shell>       Print the shell integration snippet for powershell, bash, or zsh")
 	fmt.Fprintln(w, "  shell install <shell>    Install the shell integration into your profile")
+	fmt.Fprintln(w, "  shell install powershell-helpers  Install only the PowerShell helper aliases (csg/csi/csc)")
 	fmt.Fprintln(w, "  selftest                 Run local smoke checks")
 	fmt.Fprintln(w, "  version                  Print version/build metadata")
 }
 
 func printShellUsage(w io.Writer) {
-	fmt.Fprintln(w, "usage: cliai shell [init|install] [powershell|bash|zsh]")
+	fmt.Fprintln(w, "usage: cliai shell [init|install] [powershell|powershell-helpers|bash|zsh]")
 }
 
 func normalizePredictArgs(args []string) []string {

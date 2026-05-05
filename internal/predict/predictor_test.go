@@ -110,6 +110,30 @@ func TestPredictUsesProjectContextForGoRun(t *testing.T) {
 	t.Fatalf("expected context-aware go run suggestion, got %#v", results)
 }
 
+func TestRiskLevelMarksInstallCommandsAsCaution(t *testing.T) {
+	if got := riskLevel("winget install vscode"); got != "caution" {
+		t.Fatalf("expected install command to be caution, got %q", got)
+	}
+	if got := riskLevel("pip install -r requirements.txt"); got != "caution" {
+		t.Fatalf("expected pip install command to be caution, got %q", got)
+	}
+}
+
+func TestRiskLevelMarksServiceStartCommandsAsCaution(t *testing.T) {
+	for _, command := range []string{"pnpm dev", "npm run dev", "go run .", "docker compose up -d"} {
+		if got := riskLevel(command); got != "caution" {
+			t.Fatalf("expected %q to be caution, got %q", command, got)
+		}
+	}
+}
+
+func TestRiskLevelMarksPowerShellDeleteCommandsAsDanger(t *testing.T) {
+	command := `Get-Process any-api -ErrorAction SilentlyContinue | Stop-Process -Force; Remove-Item -Path ".\data.db" -Force`
+	if got := riskLevel(command); got != "danger" {
+		t.Fatalf("expected PowerShell delete command to be danger, got %q", got)
+	}
+}
+
 func BenchmarkPredict(b *testing.B) {
 	engine := New()
 	entries := []history.Entry{
