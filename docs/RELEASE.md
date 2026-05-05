@@ -119,6 +119,12 @@ Windows 发布包解压后，用户可直接执行：
 
 来一键启用实时灰字预测。
 
+如果只想安装 `csg` / `csi` / `csc` helper：
+
+```powershell
+.\cliai.exe shell install powershell-helpers
+```
+
 Linux/macOS 发布包解压后，用户可执行：
 
 ```bash
@@ -132,6 +138,22 @@ cliai shell install powershell
 ```
 
 即可启用 PowerShell 实时预测。
+
+仓库根目录还提供了适合 README 和 Release 页面直接引用的一键安装入口：
+
+Linux/macOS 最新 Release：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install-unix.sh | bash
+```
+
+Linux apt 一步安装 `cliai`、`zsh` 和 zsh 集成：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.sh | \
+  env CLIAI_INSTALL_PACKAGE=1 CLIAI_INSTALL_ZSH=1 CLIAI_ENABLE_ZSH=1 bash
+exec zsh
+```
 
 ## 6. 生成 winget manifest
 

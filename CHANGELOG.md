@@ -6,6 +6,17 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+### Added
+- A repository-root `install-unix.sh` bootstrap script so Linux and macOS users can install the latest GitHub Release directly with `curl | bash`
+
+### Changed
+- Windows bootstrap install now supports `CLIAI_SHELL_INTEGRATION=HelpersOnly` to install only the `csg` / `csi` / `csc` PowerShell helpers
+- Linux apt bootstrap install now supports optional package and shell-integration autorun through environment variables such as `CLIAI_INSTALL_PACKAGE`, `CLIAI_INSTALL_ZSH`, and `CLIAI_ENABLE_ZSH`
+- Unix package-local installer now supports optional shell-integration autorun, including `zsh`, `bash`, `powershell`, and `powershell-helpers`
+
+### Fixed
+- README and release documentation now point to a real top-level Unix one-liner installer instead of implying that `install-unix.sh` exists only after extracting a release archive
+
 ## [0.2.9] - 2026-05-04
 
 ### Added
