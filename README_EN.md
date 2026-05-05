@@ -80,6 +80,13 @@ This installer:
 - adds `cliai` to the user `PATH`
 - enables the PowerShell predictor integration
 
+If you only want the `csg` / `csi` / `csc` helper aliases without the full predictor module:
+
+```powershell
+$env:CLIAI_SHELL_INTEGRATION = "HelpersOnly"
+iwr -useb https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.ps1 | iex
+```
+
 ### Linux apt install
 
 Add the apt source:
@@ -93,6 +100,14 @@ Install the package:
 ```bash
 sudo apt update
 sudo apt install cliai
+```
+
+To set up the apt source, install `cliai`, install `zsh`, and enable zsh integration in one flow:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.sh | \
+  env CLIAI_INSTALL_PACKAGE=1 CLIAI_INSTALL_ZSH=1 CLIAI_ENABLE_ZSH=1 bash
+exec zsh
 ```
 
 Then enable shell integration:
@@ -119,9 +134,38 @@ If `pwsh` is installed:
 cliai shell install powershell
 ```
 
+For helper aliases only:
+
+```bash
+cliai shell install powershell-helpers
+```
+
+### Linux / macOS one-liner
+
+If you do not want to use apt, or you are on macOS, you can install the latest GitHub Release directly:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install-unix.sh | bash
+```
+
+After install, `zsh` is the recommended shell:
+
+```bash
+cliai shell install zsh
+```
+
+To download, install, and enable zsh integration in one flow:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install-unix.sh | \
+  env CLIAI_ENABLE_ZSH=1 bash
+exec zsh
+```
+
 ### GitHub Release install
 
 - Windows: download `cliai_Windows_x86_64.zip` or `cliai_Windows_ARM64.zip`, then run `.\cliai.exe shell install powershell`
+- Windows helpers only: run `.\cliai.exe shell install powershell-helpers`
 - Linux/macOS: download the matching `cliai_Linux_*.tar.gz` or `cliai_macOS_*.tar.gz`, extract it, then run `./scripts/install-unix.sh`
 
 ### Distribution Status

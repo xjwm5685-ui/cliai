@@ -7,6 +7,7 @@ $CliaiPredictionSource = "Plugin"
 $CliaiSkipPathUpdate = $false
 $CliaiSkipShellIntegration = $false
 $CliaiForce = $false
+$CliaiShellIntegration = "Predictor"
 
 function Get-BoolEnvValue {
   param(
@@ -81,6 +82,23 @@ function Resolve-PredictionSource {
     "Plugin" { return "Plugin" }
     "HistoryAndPlugin" { return "HistoryAndPlugin" }
     default { throw "Unsupported prediction source: $PreferredSource" }
+  }
+}
+
+function Resolve-ShellIntegrationMode {
+  param(
+    [string]$PreferredMode
+  )
+
+  if ([string]::IsNullOrWhiteSpace($PreferredMode)) {
+    return "Predictor"
+  }
+
+  switch ($PreferredMode.Trim()) {
+    "Predictor" { return "Predictor" }
+    "HelpersOnly" { return "HelpersOnly" }
+    "None" { return "None" }
+    default { throw "Unsupported shell integration mode: $PreferredMode" }
   }
 }
 
@@ -222,6 +240,18 @@ if (`$PSVersionTable.PSVersion -ge [Version]'7.2.0') {
     Set-PSReadLineKeyHandler -Chord Alt+Shift+RightArrow -Function AcceptNextSuggestionWord
   }
 }
+
+function Install-CliaiPowerShellHelpers {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ExePath
+  )
+
+  & $ExePath shell install powershell-helpers
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed to run '$ExePath shell install powershell-helpers'."
+  }
+}
 "@
 
   $current = ""
@@ -293,6 +323,7 @@ function Install-Cliai {
     [string]$RequestedArch,
     [string]$TargetInstallDir,
     [string]$RequestedPredictionSource,
+    [string]$RequestedShellIntegration,
     [switch]$DoSkipPathUpdate,
     [switch]$DoSkipShellIntegration,
     [switch]$DoForce
@@ -310,6 +341,7 @@ function Install-Cliai {
 
   $resolvedArch = Resolve-CliaiArchitecture -PreferredArch $RequestedArch
   $RequestedPredictionSource = Resolve-PredictionSource -PreferredSource $RequestedPredictionSource
+  $RequestedShellIntegration = Resolve-ShellIntegrationMode -PreferredMode $RequestedShellIntegration
   $assetNames = Get-CliaiWindowsAssetNames -Architecture $resolvedArch
 
   if (-not $TargetInstallDir) {
@@ -356,7 +388,14 @@ function Install-Cliai {
     }
 
     if (-not $DoSkipShellIntegration) {
-      Install-CliaiPowerShellIntegration -InstallRoot $TargetInstallDir -ExePath $exePath -PredictionSource $RequestedPredictionSource -ModuleVersion $resolvedVersion
+      switch ($RequestedShellIntegration) {
+        "Predictor" {
+          Install-CliaiPowerShellIntegration -InstallRoot $TargetInstallDir -ExePath $exePath -PredictionSource $RequestedPredictionSource -ModuleVersion $resolvedVersion
+        }
+        "HelpersOnly" {
+          Install-CliaiPowerShellHelpers -ExePath $exePath
+        }
+      }
     }
 
     Write-Host ""
@@ -368,8 +407,13 @@ function Install-Cliai {
     }
     if ($DoSkipShellIntegration) {
       Write-Host "Skipped shell integration."
+    } elseif ($RequestedShellIntegration -eq "HelpersOnly") {
+      Write-Host "PowerShell helper aliases installed (csg/csi/csc)."
     } else {
       Write-Host "PowerShell integration installed."
+    }
+    if (-not $DoSkipShellIntegration -and $RequestedShellIntegration -eq "Predictor") {
+      Write-Host "To install only helper aliases next time, set CLIAI_SHELL_INTEGRATION=HelpersOnly before running the installer."
     }
     Write-Host "Open a new terminal and run: cliai version"
   }
@@ -398,6 +442,10 @@ if ($CliaiPredictionSource -eq "Plugin") {
     $CliaiPredictionSource = $envPredictionSource
   }
 }
+$envShellIntegration = [Environment]::GetEnvironmentVariable("CLIAI_SHELL_INTEGRATION")
+if (-not [string]::IsNullOrWhiteSpace($envShellIntegration)) {
+  $CliaiShellIntegration = $envShellIntegration
+}
 if (Get-BoolEnvValue -Name "CLIAI_SKIP_PATH_UPDATE") {
   $CliaiSkipPathUpdate = $true
 }
@@ -414,6 +462,7 @@ if (-not (Get-BoolEnvValue -Name "CLIAI_INSTALL_NO_AUTORUN")) {
     -RequestedArch $CliaiArch `
     -TargetInstallDir $CliaiInstallDir `
     -RequestedPredictionSource $CliaiPredictionSource `
+    -RequestedShellIntegration $CliaiShellIntegration `
     -DoSkipPathUpdate:$CliaiSkipPathUpdate `
     -DoSkipShellIntegration:$CliaiSkipShellIntegration `
     -DoForce:$CliaiForce

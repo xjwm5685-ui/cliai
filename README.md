@@ -107,6 +107,13 @@ iwr -useb https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.ps1 |
 - 校验校验和并写入用户 `PATH`
 - 自动安装 PowerShell 预测集成
 
+如果你只想安装 `csg` / `csi` / `csc` helper，而不安装完整预测器模块：
+
+```powershell
+$env:CLIAI_SHELL_INTEGRATION = "HelpersOnly"
+iwr -useb https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.ps1 | iex
+```
+
 ### Linux 通过 apt 安装
 
 先添加软件源：
@@ -120,6 +127,14 @@ curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.sh |
 ```bash
 sudo apt update
 sudo apt install cliai
+```
+
+如果你想一步完成 apt 源、`cliai`、`zsh` 和 zsh 集成：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install.sh | \
+  env CLIAI_INSTALL_PACKAGE=1 CLIAI_INSTALL_ZSH=1 CLIAI_ENABLE_ZSH=1 bash
+exec zsh
 ```
 
 安装完成后，建议继续执行 shell 集成：
@@ -146,12 +161,41 @@ cliai shell install bash
 cliai shell install powershell
 ```
 
+如果你只想启用 PowerShell helper：
+
+```bash
+cliai shell install powershell-helpers
+```
+
+### Linux / macOS 通用一键安装
+
+如果你不想使用 apt，或者你在 macOS 上，可以直接安装最新 GitHub Release：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install-unix.sh | bash
+```
+
+安装后如果你主要使用 `zsh`，推荐继续执行：
+
+```bash
+cliai shell install zsh
+```
+
+想一步完成下载、安装和 zsh 集成：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xjwm5685-ui/cliai/main/install-unix.sh | \
+  env CLIAI_ENABLE_ZSH=1 bash
+exec zsh
+```
+
 ### GitHub Release 手动安装
 
 Windows：
 
 - 下载 `cliai_Windows_x86_64.zip` 或 `cliai_Windows_ARM64.zip`
 - 解压后执行 `.\cliai.exe shell install powershell`
+- 如果只想要 helper，可执行 `.\cliai.exe shell install powershell-helpers`
 
 Linux / macOS：
 
