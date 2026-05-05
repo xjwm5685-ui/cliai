@@ -128,14 +128,16 @@ func runPredict(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	engine := predict.New()
-	candidates := engine.Predict(predict.Request{
+	request := predict.Request{
 		Query:           query,
 		CWD:             *useCWD,
 		Shell:           normalizeShell(*shell),
 		Limit:           *limit,
+		Debug:           *debug,
 		Project:         projectCtx,
 		FeedbackBonuses: feedback.CommandBonuses(query, feedbackEntries),
-	}, allHistory)
+	}
+	candidates, debugReport := engine.PredictWithDebug(request, allHistory)
 
 	if *debug {
 		printDebug(stderr, debugInfo{
@@ -145,7 +147,7 @@ func runPredict(args []string, stdout io.Writer, stderr io.Writer) int {
 			HistoryEntries: len(allHistory),
 			FeedbackCount:  len(feedbackEntries),
 			Project:        projectCtx,
-		}, candidates)
+		}, candidates, debugReport)
 	}
 
 	if len(candidates) == 0 {
@@ -478,46 +480,102 @@ func runSelftest(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func powershellSnippet() string {
-	return `function Invoke-CliaiSuggestion {
+	return `function Resolve-CliaiQuery {
   param(
-    [Parameter(Mandatory=$true, Position=0)]
-    [string]$Query
+    [string]$Query,
+    [string[]]$QueryParts
   )
-  cliai predict --limit 5 $Query
+
+  if (-not [string]::IsNullOrWhiteSpace($Query)) {
+    return $Query
+  }
+  return ($QueryParts -join ' ').Trim()
+}
+
+function Get-CliaiExecutable {
+  $command = Get-Command cliai -ErrorAction SilentlyContinue
+  if ($null -eq $command) {
+    throw "cliai is not in PATH. Reopen the terminal, or run 'go build -o .\cliai.exe .' and add the binary to PATH."
+  }
+  return $command.Source
+}
+
+function Invoke-CliaiSuggestion {
+  param(
+    [Parameter(Position=0)]
+    [string]$Query,
+    [Parameter(ValueFromRemainingArguments=$true)]
+    [string[]]$QueryParts
+  )
+
+  $resolvedQuery = Resolve-CliaiQuery -Query $Query -QueryParts $QueryParts
+  if ([string]::IsNullOrWhiteSpace($resolvedQuery)) {
+    return
+  }
+
+  $exe = Get-CliaiExecutable
+  & $exe predict --shell powershell --cwd $PWD.Path --limit 5 -- $resolvedQuery
 }
 
 function Invoke-CliaiInteractiveSuggestion {
   param(
-    [Parameter(Mandatory=$true, Position=0)]
-    [string]$Query
+    [Parameter(Position=0)]
+    [string]$Query,
+    [Parameter(ValueFromRemainingArguments=$true)]
+    [string[]]$QueryParts
   )
-  cliai predict --interactive --copy $Query
+
+  $resolvedQuery = Resolve-CliaiQuery -Query $Query -QueryParts $QueryParts
+  if ([string]::IsNullOrWhiteSpace($resolvedQuery)) {
+    return
+  }
+
+  $exe = Get-CliaiExecutable
+  & $exe predict --shell powershell --cwd $PWD.Path --interactive --copy -- $resolvedQuery
 }
 
 function Get-CliaiTopCommand {
   param(
-    [Parameter(Mandatory=$true, Position=0)]
-    [string]$Query
+    [Parameter(Position=0)]
+    [string]$Query,
+    [Parameter(ValueFromRemainingArguments=$true)]
+    [string[]]$QueryParts
   )
-  cliai predict --command-only $Query
+
+  $resolvedQuery = Resolve-CliaiQuery -Query $Query -QueryParts $QueryParts
+  if ([string]::IsNullOrWhiteSpace($resolvedQuery)) {
+    return
+  }
+
+  $exe = Get-CliaiExecutable
+  & $exe predict --shell powershell --cwd $PWD.Path --command-only -- $resolvedQuery
 }
 
-Set-Alias csg Invoke-CliaiSuggestion
-Set-Alias csi Invoke-CliaiInteractiveSuggestion
-Set-Alias csc Get-CliaiTopCommand
+Set-Alias -Name csg -Value Invoke-CliaiSuggestion -Scope Global
+Set-Alias -Name csi -Value Invoke-CliaiInteractiveSuggestion -Scope Global
+Set-Alias -Name csc -Value Get-CliaiTopCommand -Scope Global
 
 Register-ArgumentCompleter -CommandName csg -ScriptBlock {
   param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-  $query = $wordToComplete
-  if ([string]::IsNullOrWhiteSpace($query)) {
+
+  try {
+    $text = $commandAst.Extent.Text
+    if ($text.Length -le $commandName.Length) {
+      return
+    }
+    $query = $text.Substring($commandName.Length).Trim()
+    if ([string]::IsNullOrWhiteSpace($query)) {
+      return
+    }
+
+    $exe = Get-CliaiExecutable
+    & $exe predict --shell powershell --cwd $PWD.Path --command-only -- $query | ForEach-Object {
+      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+    }
+  } catch {
     return
   }
-  cliai predict --command-only $query | ForEach-Object {
-    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
-  }
-}
-
-Write-Host "cliai helper loaded. Use: csg '安装 vscode', csi 'git st', csc 'run tests'" -ForegroundColor Green`
+}`
 }
 
 func printHelp(w io.Writer) {
@@ -629,12 +687,26 @@ type debugInfo struct {
 	Project        project.Context
 }
 
-func printDebug(w io.Writer, info debugInfo, candidates []predict.Candidate) {
+const maxDebugRejectedCandidates = 20
+
+func printDebug(w io.Writer, info debugInfo, candidates []predict.Candidate, report predict.DebugReport) {
 	fmt.Fprintf(w, "debug query=%q shell=%s cwd=%s history_entries=%d feedback_entries=%d project_types=%s package_manager=%s\n",
 		info.Query, info.Shell, info.CWD, info.HistoryEntries, info.FeedbackCount, strings.Join(info.Project.ProjectTypes, ","), info.Project.PackageManager)
 	for index, candidate := range candidates {
-		fmt.Fprintf(w, "debug candidate[%d] score=%.2f source=%s risk=%s command=%q reason=%q\n",
-			index, candidate.Score, candidate.Source, candidate.Risk, candidate.Command, candidate.Reason)
+		fmt.Fprintf(w, "debug candidate[%d] score=%.2f source=%s risk=%s command=%q reason=%q details=%q\n",
+			index, candidate.Score, candidate.Source, candidate.Risk, candidate.Command, candidate.Reason, candidate.Details)
+	}
+	rejectedCount := len(report.Rejected)
+	if rejectedCount > maxDebugRejectedCandidates {
+		rejectedCount = maxDebugRejectedCandidates
+	}
+	for index := 0; index < rejectedCount; index++ {
+		rejected := report.Rejected[index]
+		fmt.Fprintf(w, "debug rejected[%d] score=%.2f source=%s command=%q reason=%q\n",
+			index, rejected.Score, rejected.Source, rejected.Command, rejected.Reason)
+	}
+	if len(report.Rejected) > rejectedCount {
+		fmt.Fprintf(w, "debug rejected_truncated=%d\n", len(report.Rejected)-rejectedCount)
 	}
 }
 

@@ -31,6 +31,10 @@ type predictorServiceResponse struct {
 	Error       string              `json:"error,omitempty"`
 }
 
+type predictorQueryService interface {
+	Query(request predictorServiceRequest) ([]predict.Candidate, error)
+}
+
 type predictorService struct {
 	mu            sync.Mutex
 	cfg           *config.Config
@@ -65,7 +69,12 @@ func runPredictor(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
+	return runPredictorStream(service, os.Stdin, stdout, stderr)
+}
+
+func runPredictorStream(service predictorQueryService, stdin io.Reader, stdout io.Writer, stderr io.Writer) int {
+	scanner := bufio.NewScanner(stdin)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	writer := bufio.NewWriter(stdout)
 	encoder := json.NewEncoder(writer)
 	encoder.SetEscapeHTML(false)

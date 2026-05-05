@@ -59,6 +59,7 @@ func runShellInstallPowerShellHelpers(stdout io.Writer, stderr io.Writer) int {
 	fmt.Fprintln(stdout, "Open a new pwsh session, or reload your profile with:")
 	fmt.Fprintf(stdout, "  . %s\n", profilePath)
 	fmt.Fprintln(stdout, "Helper aliases: csg, csi, csc")
+	fmt.Fprintf(stdout, "To uninstall later, remove the block between %q and %q from your profile.\n", powerShellHelpersStartMarker, powerShellHelpersEndMarker)
 	return 0
 }
 

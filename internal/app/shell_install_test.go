@@ -73,7 +73,10 @@ func TestInstallPowerShellHelpersWritesMarkedBlock(t *testing.T) {
 	if strings.Count(content, powerShellHelpersStartMarker) != 1 {
 		t.Fatalf("expected one helper block marker, got %q", content)
 	}
-	if !strings.Contains(content, "Set-Alias csg") || !strings.Contains(content, "Set-Alias csi") || !strings.Contains(content, "Set-Alias csc") {
+	if !strings.Contains(content, "Set-Alias -Name csg") || !strings.Contains(content, "Set-Alias -Name csi") || !strings.Contains(content, "Set-Alias -Name csc") {
 		t.Fatalf("expected helper aliases in profile, got %q", content)
+	}
+	if !strings.Contains(content, "Get-CliaiExecutable") || !strings.Contains(content, "--cwd $PWD.Path") {
+		t.Fatalf("expected cwd-aware helper implementation in profile, got %q", content)
 	}
 }

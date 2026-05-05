@@ -15,6 +15,7 @@
 - 社区友链：[Linux.do](https://linux.do)
 - 英文说明：[README_EN.md](file:///d:/sanqiu/cliai/README_EN.md)
 - 发布说明：[RELEASE.md](file:///d:/sanqiu/cliai/docs/RELEASE.md)
+- 发布说明草稿：[RELEASE_NOTES_DRAFT.md](file:///d:/sanqiu/cliai/docs/RELEASE_NOTES_DRAFT.md)
 - 发布清单：[RELEASE_CHECKLIST.md](file:///d:/sanqiu/cliai/docs/RELEASE_CHECKLIST.md)
 
 ## 典型效果
@@ -393,6 +394,17 @@ csi "git st"
 csc "run tests"
 ```
 
+PowerShell helper 安装与卸载：
+
+```powershell
+cliai shell install powershell-helpers
+. $PROFILE
+```
+
+- helper 只安装 `csg` / `csi` / `csc`，不改动完整预测器模块
+- helper 代码会写入 `$PROFILE` 中由 `# >>> cliai helpers >>>` 和 `# <<< cliai helpers <<<` 包裹的区块
+- 如需卸载，删除这段标记区块并重新打开 PowerShell
+
 ## 实时预测
 
 ### PowerShell
@@ -412,6 +424,12 @@ Import-Module CliaiPredictor
 (Get-PSSubsystem -Kind CommandPredictor).Implementations |
   Select-Object Id, Name, Description
 ```
+
+卸载或回滚：
+
+- 删除 `$PROFILE` 中 cliai 写入的 PowerShell 集成区块
+- 删除 `~/Documents/PowerShell/Modules/CliaiPredictor/<version>` 目录
+- 重新打开 PowerShell，必要时再执行 `Import-Module PSReadLine`
 
 ### zsh
 
@@ -485,6 +503,12 @@ go run . predict --debug "run tests"
 go build -o cliai.exe .
 ```
 
+如果你希望直接在仓库根目录验证最新行为，重新构建当前目录二进制：
+
+```powershell
+go build -o .\cliai.exe .
+```
+
 运行全部测试：
 
 ```powershell
@@ -542,6 +566,29 @@ Release 文件：
 
 ```powershell
 chcp 65001
+```
+
+### `Set-PSReadLineOption -PredictionSource` 报错怎么办
+
+如果安装 PowerShell 预测器时看到 `PredictionSource` 参数不支持、取值无效，通常是 PowerShell 或 PSReadLine 版本偏旧。
+
+可按下面顺序排查：
+
+```powershell
+$PSVersionTable.PSVersion
+Get-Module PSReadLine -ListAvailable | Select-Object Name, Version, Path
+```
+
+- 推荐使用 PowerShell `7.2+`
+- 推荐使用 PSReadLine `2.2.2+`
+- 如果只想先恢复 helper 工作流，可执行 `cliai shell install powershell-helpers`
+- 升级 PowerShell / PSReadLine 后，重新执行 `cliai shell install powershell`
+
+如果你是源码用户，也可以先重新构建最新可执行文件再安装：
+
+```powershell
+go build -o .\cliai.exe .
+.\cliai.exe shell install powershell
 ```
 
 ## 许可证

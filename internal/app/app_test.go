@@ -2,11 +2,23 @@ package app
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/sanqiu/cliai/internal/predict"
 )
+
+type stubPredictorQueryService struct {
+	suggestions []predict.Candidate
+	err         error
+}
+
+func (s stubPredictorQueryService) Query(request predictorServiceRequest) ([]predict.Candidate, error) {
+	return s.suggestions, s.err
+}
 
 func TestNormalizePredictArgsSupportsLeadingAndTrailingFlags(t *testing.T) {
 	got := normalizePredictArgs([]string{"--json", "安装", "vscode", "--limit", "3"})
@@ -140,7 +152,84 @@ func TestRunShellInitPowerShellHelpersPrintsAliasSnippet(t *testing.T) {
 	}
 
 	output := stdout.String()
-	if !strings.Contains(output, "Set-Alias csg") || !strings.Contains(output, "Set-Alias csi") || !strings.Contains(output, "Set-Alias csc") {
+	if !strings.Contains(output, "Set-Alias -Name csg") || !strings.Contains(output, "Set-Alias -Name csi") || !strings.Contains(output, "Set-Alias -Name csc") {
 		t.Fatalf("expected helper aliases in snippet, got %q", output)
+	}
+	if !strings.Contains(output, "Get-CliaiExecutable") || !strings.Contains(output, "--cwd $PWD.Path") {
+		t.Fatalf("expected safer helper snippet with cwd-aware execution, got %q", output)
+	}
+	if strings.Contains(output, "Write-Host \"cliai helper loaded") {
+		t.Fatalf("did not expect noisy profile Write-Host in snippet, got %q", output)
+	}
+}
+
+func TestRunPredictorStreamReturnsJSONErrorForInvalidRequest(t *testing.T) {
+	var stdout bytes.Buffer
+	code := runPredictorStream(stubPredictorQueryService{}, strings.NewReader("{broken-json\n"), &stdout, &bytes.Buffer{})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+
+	var response predictorServiceResponse
+	if err := json.Unmarshal(stdout.Bytes(), &response); err != nil {
+		t.Fatalf("expected JSON response, got error: %v, raw=%q", err, stdout.String())
+	}
+	if !strings.Contains(response.Error, "decode request") {
+		t.Fatalf("expected decode error response, got %#v", response)
+	}
+}
+
+func TestPrintDebugIncludesRejectedCandidates(t *testing.T) {
+	var stderr bytes.Buffer
+	printDebug(&stderr, debugInfo{
+		Query:          "git st",
+		Shell:          "powershell",
+		CWD:            "D:\\sanqiu\\cliai",
+		HistoryEntries: 10,
+		FeedbackCount:  2,
+	}, []predict.Candidate{
+		{
+			Command: "git status",
+			Source:  "history",
+			Score:   120,
+			Risk:    "safe",
+			Reason:  "history hit; matched test intent",
+			Details: []string{"matches git st prefix"},
+		},
+	}, predict.DebugReport{
+		Rejected: []predict.RejectedCandidate{
+			{
+				Command: "git clone https://example.com/repo.git",
+				Source:  "history",
+				Score:   12,
+				Reason:  "rejected by gate: subcommand mismatch for explicit command prefix",
+			},
+		},
+	})
+
+	output := stderr.String()
+	if !strings.Contains(output, "debug candidate[0]") || !strings.Contains(output, "details=") {
+		t.Fatalf("expected debug output to include candidate details, got %q", output)
+	}
+	if !strings.Contains(output, "debug rejected[0]") || !strings.Contains(output, "subcommand mismatch") {
+		t.Fatalf("expected debug output to include rejected candidate reason, got %q", output)
+	}
+}
+
+func TestPrintDebugTruncatesRejectedCandidates(t *testing.T) {
+	var rejected []predict.RejectedCandidate
+	for i := 0; i < maxDebugRejectedCandidates+3; i++ {
+		rejected = append(rejected, predict.RejectedCandidate{
+			Command: "cmd",
+			Source:  "history",
+			Reason:  "rejected by gate",
+		})
+	}
+
+	var stderr bytes.Buffer
+	printDebug(&stderr, debugInfo{}, nil, predict.DebugReport{Rejected: rejected})
+	output := stderr.String()
+	if !strings.Contains(output, "debug rejected_truncated=3") {
+		t.Fatalf("expected truncated rejected summary, got %q", output)
 	}
 }

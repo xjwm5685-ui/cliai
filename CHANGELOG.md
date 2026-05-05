@@ -8,14 +8,25 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Added
 - A repository-root `install-unix.sh` bootstrap script so Linux and macOS users can install the latest GitHub Release directly with `curl | bash`
+- Lightweight intent classification in `internal/predict`, covering file search, package install, change-directory, read-file, run-tests, open-editor, and start-project scenarios
+- Candidate eligibility gating for strong command-prefix queries such as `git st`, `docker ps`, and `go test`
+- Predictor debug reporting for rejected candidates, including gate reasons in `predict --debug`
+- Regression coverage for intent classification, family gating, history sanitization, richer candidate reasons, and PowerShell helper integration
 
 ### Changed
 - Windows bootstrap install now supports `CLIAI_SHELL_INTEGRATION=HelpersOnly` to install only the `csg` / `csi` / `csc` PowerShell helpers
 - Linux apt bootstrap install now supports optional package and shell-integration autorun through environment variables such as `CLIAI_INSTALL_PACKAGE`, `CLIAI_INSTALL_ZSH`, and `CLIAI_ENABLE_ZSH`
 - Unix package-local installer now supports optional shell-integration autorun, including `zsh`, `bash`, `powershell`, and `powershell-helpers`
+- History ranking now penalizes noisy long commands more aggressively and keeps unrelated high-frequency history from crowding out context/template suggestions
+- Candidate explanations now prefer current-context reasons over raw history hits when the same command is recommended from multiple sources
+- PowerShell helper snippets now resolve `cliai` more safely, pass through `--cwd`, support remaining arguments, and avoid noisy profile output
+- File-search intent in development contexts now prefers `Select-String` / `grep` over package search for queries such as `查找 TODO`
 
 ### Fixed
 - README and release documentation now point to a real top-level Unix one-liner installer instead of implying that `install-unix.sh` exists only after extracting a release archive
+- History import now rejects bare URLs, concatenated commands, obvious shell output text, and other low-quality lines before they can pollute ranking
+- Strong command-prefix queries such as `git st`, `git cl`, `docker ps`, and `go test` now gate out unrelated command families from top results
+- Identical commands coming from both history and project context now keep the more helpful context/template source while retaining history as supporting explanation
 
 ## [0.2.9] - 2026-05-04
 
